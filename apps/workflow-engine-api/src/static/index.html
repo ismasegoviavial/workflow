@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Workflow Studio | Diseñador Visual n8n Configurable</title>
+    <title>Workflow Studio | Lienzo en Blanco</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -66,12 +66,12 @@
             <div>
                 <div class="flex items-center space-x-2">
                     <span class="font-bold text-sm text-slate-900">Workflow Studio (GCP Serverless)</span>
-                    <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">En Vivo</span>
+                    <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">En Blanco</span>
                 </div>
                 <div class="text-[11px] text-slate-500 flex items-center space-x-2">
-                    <span>Tenant: <strong class="text-slate-800" id="tenant-label">DEMOCORP</strong></span>
+                    <span>Tenant: <strong class="text-slate-800" id="tenant-label">MI_EMPRESA</strong></span>
                     <span>•</span>
-                    <span class="font-mono text-[#ea580c]" id="workflow-name-display">Workflow de Servicios a Medida</span>
+                    <span class="font-mono text-[#ea580c]" id="workflow-name-display">Nuevo Workflow Personalizado</span>
                 </div>
             </div>
         </div>
@@ -91,14 +91,18 @@
             </div>
 
             <!-- Botones Rápidos para Agregar Elementos -->
-            <button onclick="openAddStageModal()" class="px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold border border-blue-200 flex items-center space-x-1.5 transition">
-                <i data-lucide="plus-circle" class="w-3.5 h-3.5 text-blue-600"></i>
+            <button onclick="openAddStageModal()" class="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-500/20 flex items-center space-x-1.5 transition">
+                <i data-lucide="plus-circle" class="w-4 h-4"></i>
                 <span>+ Nueva Etapa</span>
             </button>
 
             <button onclick="openAddMicroserviceModal()" class="px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold border border-indigo-200 flex items-center space-x-1.5 transition">
                 <i data-lucide="cpu" class="w-3.5 h-3.5 text-indigo-600"></i>
                 <span>+ Nuevo Microservicio</span>
+            </button>
+
+            <button onclick="resetWorkflow()" title="Limpiar todo el flujo" class="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-500 text-xs border border-slate-300 transition">
+                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
             </button>
         </div>
 
@@ -123,11 +127,11 @@
             <div id="workflow-canvas" class="flex-1 canvas-bg relative overflow-auto p-10 cursor-grab active:cursor-grabbing">
                 
                 <!-- SVG Cables Dinámicos -->
-                <svg id="svg-wires-layer" class="absolute inset-0 w-full h-full pointer-events-none z-0" style="min-width: 2500px; min-height: 1200px;"></svg>
+                <svg id="svg-wires-layer" class="absolute inset-0 w-full h-full pointer-events-none z-0" style="min-width: 3000px; min-height: 1500px;"></svg>
 
                 <!-- Contenedor Dinámico de Nodos en el Canvas -->
-                <div id="nodes-canvas-container" class="relative z-10" style="min-width: 2500px; min-height: 1200px;">
-                    <!-- Los nodos se renderizan dinámicamente con renderCanvas() -->
+                <div id="nodes-canvas-container" class="relative z-10" style="min-width: 3000px; min-height: 1500px;">
+                    <!-- Se renderizan los nodos aquí -->
                 </div>
             </div>
 
@@ -143,7 +147,7 @@
                             <span id="drawer-substage-key" class="text-[11px] font-mono text-slate-500">SUB_KEY</span>
                         </div>
                     </div>
-                    <button onclick="cloneSelectedSubstage()" title="Clonar esta Subetapa" class="px-2.5 py-1 text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg border border-slate-300 flex items-center space-x-1">
+                    <button id="btn-drawer-clone" onclick="cloneSelectedSubstage()" title="Clonar esta Subetapa" class="px-2.5 py-1 text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg border border-slate-300 flex items-center space-x-1">
                         <i data-lucide="copy" class="w-3.5 h-3.5"></i>
                         <span>Clonar</span>
                     </button>
@@ -163,7 +167,7 @@
                 </div>
 
                 <!-- Body del Drawer -->
-                <div class="flex-1 overflow-y-auto p-4 space-y-4">
+                <div class="flex-1 overflow-y-auto p-4 space-y-4" id="drawer-body-content">
                     
                     <!-- TAB 1: CONSTRUCTOR DE CAMPOS (SCHEMA BUILDER) -->
                     <div id="tab-pane-fields" class="space-y-4">
@@ -172,7 +176,7 @@
                                 <h4 class="font-bold text-xs text-slate-900">Campos del Formulario (Input Schema)</h4>
                                 <p class="text-[11px] text-slate-500">Define los datos que el rol Editor debe ingresar.</p>
                             </div>
-                            <button onclick="openAddFieldModal()" class="px-2.5 py-1 bg-[#ff6d5a] hover:bg-[#ea580c] text-white rounded-lg text-xs font-bold flex items-center space-x-1 shadow-sm">
+                            <button onclick="openAddFieldModal()" class="px-2.5 py-1.5 bg-[#ff6d5a] hover:bg-[#ea580c] text-white rounded-lg text-xs font-bold flex items-center space-x-1 shadow-sm">
                                 <i data-lucide="plus" class="w-3.5 h-3.5"></i>
                                 <span>+ Agregar Campo</span>
                             </button>
@@ -203,7 +207,7 @@
                             <label class="block text-[11px] font-semibold text-slate-700 mb-1">Microservicio Seleccionado</label>
                             <select id="select-microservice" onchange="updateSubstageMicroservice(this.value)" class="w-full bg-white border border-slate-300 text-slate-800 px-3 py-2 rounded-lg text-xs font-medium focus:ring-2 focus:ring-[#ff6d5a] focus:outline-none">
                                 <option value="">(Ninguno - Formulario Manual)</option>
-                                <option value="SRV_DATE_CALCULATOR" selected>⚡ SRV_DATE_CALCULATOR (Calculador de Días Hábiles)</option>
+                                <option value="SRV_DATE_CALCULATOR">⚡ SRV_DATE_CALCULATOR (Calculador de Días Hábiles)</option>
                                 <option value="SRV_PDF_READER">📄 SRV_PDF_READER (Extractor OCR de PDFs)</option>
                                 <option value="SRV_DOC_GENERATOR">📝 SRV_DOC_GENERATOR (Generador de Contratos PDF)</option>
                             </select>
@@ -227,19 +231,19 @@
 
                         <div>
                             <label class="block text-[11px] font-semibold text-slate-700 mb-1">Rol Editor (Ingreso de datos)</label>
-                            <input type="text" id="input-role-editor" onchange="updateSubstageRoles()" value="operaciones@democorp.com" class="w-full bg-white border border-slate-300 text-slate-800 px-3 py-1.5 rounded-lg text-xs font-mono shadow-sm">
+                            <input type="text" id="input-role-editor" onchange="updateSubstageRoles()" placeholder="ej: operaciones@miempresa.com" class="w-full bg-white border border-slate-300 text-slate-800 px-3 py-1.5 rounded-lg text-xs font-mono shadow-sm">
                         </div>
 
                         <div>
                             <label class="block text-[11px] font-semibold text-slate-700 mb-1">Rol Revisor (Aprobación / Rechazo)</label>
-                            <input type="text" id="input-role-reviewer" onchange="updateSubstageRoles()" value="supervisores@democorp.com" class="w-full bg-white border border-slate-300 text-slate-800 px-3 py-1.5 rounded-lg text-xs font-mono shadow-sm">
+                            <input type="text" id="input-role-reviewer" onchange="updateSubstageRoles()" placeholder="ej: supervisores@miempresa.com" class="w-full bg-white border border-slate-300 text-slate-800 px-3 py-1.5 rounded-lg text-xs font-mono shadow-sm">
                         </div>
                     </div>
 
                 </div>
 
                 <div class="p-3 border-t border-slate-200 bg-slate-50 text-xs flex justify-between items-center text-slate-500">
-                    <span>Estado: <strong class="text-emerald-700">Configurado</strong></span>
+                    <span id="drawer-status-badge">Estado: <strong class="text-emerald-700">Listo</strong></span>
                     <button onclick="switchViewMode('execution')" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold flex items-center space-x-1">
                         <i data-lucide="play" class="w-3 h-3 fill-current"></i>
                         <span>Probar en Ejecución</span>
@@ -258,12 +262,12 @@
                 <div>
                     <div class="flex items-center space-x-2">
                         <span class="font-mono text-xs bg-orange-100 text-[#ea580c] px-2 py-0.5 rounded font-bold" id="exec-portal-code">
-                            DEMOCORP-CONTRATOS-2026-00001
+                            MI_EMPRESA-WF-2026-00001
                         </span>
-                        <h2 class="font-bold text-base text-slate-900" id="exec-portal-stage-title">Etapa Activa: Recepción y Validación</h2>
+                        <h2 class="font-bold text-base text-slate-900" id="exec-portal-stage-title">Etapa Activa</h2>
                     </div>
                     <p class="text-xs text-slate-500 mt-1">
-                        Subetapa activa: <strong class="text-slate-800" id="exec-portal-sub-title">1.2 Cálculo de Plazos</strong> • Iteración: <span class="font-mono font-bold" id="exec-iteration-badge">1</span>
+                        Subetapa activa: <strong class="text-slate-800" id="exec-portal-sub-title">-</strong> • Iteración: <span class="font-mono font-bold" id="exec-iteration-badge">1</span>
                     </p>
                 </div>
 
@@ -290,7 +294,7 @@
                 <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                     <h3 class="font-bold text-sm text-slate-900 flex items-center space-x-2">
                         <i data-lucide="form-input" class="w-4 h-4 text-[#ff6d5a]"></i>
-                        <span>Formulario Generado Dinámicamente según Esquema</span>
+                        <span>Formulario Dinámico</span>
                     </h3>
                     <span class="text-xs text-slate-500 font-medium" id="portal-role-hint">Modo Editor: Ingrese los datos</span>
                 </div>
@@ -304,7 +308,7 @@
                 <div id="portal-reviewer-panel" class="hidden p-4 bg-amber-50 border border-amber-200 rounded-xl space-y-3">
                     <div class="flex items-center space-x-2 text-amber-900 font-bold text-xs">
                         <i data-lucide="shield-check" class="w-4 h-4 text-amber-600"></i>
-                        <span>Panel de Decisión del Revisor (supervisores@democorp.com)</span>
+                        <span>Panel de Decisión del Revisor</span>
                     </div>
                     <textarea id="portal-review-comments" placeholder="Ingrese comentarios u observaciones de revisión..." class="w-full text-xs p-2.5 border border-amber-300 rounded-lg focus:outline-none bg-white shadow-sm"></textarea>
                     
@@ -336,8 +340,8 @@
                     <span>Trazabilidad y Auditoría de la Ejecución</span>
                 </h4>
                 <div class="space-y-2 text-xs" id="portal-audit-list">
-                    <div class="border-l-2 border-emerald-500 pl-3 py-1 text-slate-600">
-                        <span class="font-mono text-slate-400">10:00:00</span> - Instancia iniciada por <em>operador@democorp.com</em>
+                    <div class="border-l-2 border-slate-300 pl-3 py-1 text-slate-400">
+                        No hay acciones registradas aún.
                     </div>
                 </div>
             </div>
@@ -363,11 +367,11 @@
             <div class="space-y-3">
                 <div>
                     <label class="block text-xs font-semibold text-slate-700 mb-1">Nombre / Título de la Etapa</label>
-                    <input type="text" id="new-stage-title" placeholder="Ej: Etapa 3: Aprobación Directorio" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    <input type="text" id="new-stage-title" placeholder="Ej: 1. Recepción y Validación" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-slate-700 mb-1">Identificador / Clave Única (Key)</label>
-                    <input type="text" id="new-stage-key" placeholder="Ej: ETAPA_03_DIRECTORIO" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs font-mono focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    <input type="text" id="new-stage-key" placeholder="Ej: ETAPA_01_RECEPCION" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs font-mono focus:ring-2 focus:ring-blue-500 focus:outline-none">
                 </div>
             </div>
             <div class="flex justify-end space-x-2 pt-2">
@@ -393,18 +397,18 @@
             </div>
             <div class="space-y-3">
                 <div>
-                    <label class="block text-xs font-semibold text-slate-700 mb-1">Etiqueta Visible (Título)</label>
-                    <input type="text" id="new-field-title" placeholder="Ej: Monto del Contrato (CLP)" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-[#ff6d5a] focus:outline-none">
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Etiqueta Visible (Título del Campo)</label>
+                    <input type="text" id="new-field-title" placeholder="Ej: RUT del Proveedor" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-[#ff6d5a] focus:outline-none">
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-slate-700 mb-1">Nombre Técnico / ID (JSON Key)</label>
-                    <input type="text" id="new-field-name" placeholder="Ej: monto_contrato" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs font-mono focus:ring-2 focus:ring-[#ff6d5a] focus:outline-none">
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Nombre Técnico / JSON Key</label>
+                    <input type="text" id="new-field-name" placeholder="Ej: rut_proveedor" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs font-mono focus:ring-2 focus:ring-[#ff6d5a] focus:outline-none">
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-slate-700 mb-1">Tipo de Dato</label>
                     <select id="new-field-type" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-[#ff6d5a] focus:outline-none">
                         <option value="string">Texto (string)</option>
-                        <option value="number">Número / Moneda (number)</option>
+                        <option value="number">Número / Monto (number)</option>
                         <option value="date">Fecha (date)</option>
                         <option value="boolean">Casilla / Booleano (boolean)</option>
                         <option value="file">Archivo / PDF (file url)</option>
@@ -439,15 +443,15 @@
             <div class="space-y-3">
                 <div>
                     <label class="block text-xs font-semibold text-slate-700 mb-1">Nombre del Servicio</label>
-                    <input type="text" id="new-srv-name" placeholder="Ej: Validador de Scoring Financiero" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    <input type="text" id="new-srv-name" placeholder="Ej: Lector OCR de Facturas" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-slate-700 mb-1">Clave Única (Service Key)</label>
-                    <input type="text" id="new-srv-key" placeholder="Ej: SRV_SCORING_API" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    <input type="text" id="new-srv-key" placeholder="Ej: SRV_OCR_FACTURAS" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none">
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-slate-700 mb-1">Endpoint URL (Cloud Run)</label>
-                    <input type="text" id="new-srv-url" placeholder="https://srv-scoring-xyz.a.run.app/api/v1/score" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    <input type="text" id="new-srv-url" placeholder="https://srv-ocr-xyz.a.run.app/api/v1/process" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none">
                 </div>
             </div>
             <div class="flex justify-end space-x-2 pt-2">
@@ -459,70 +463,15 @@
 
     <!-- State & Dynamic Logic Script -->
     <script>
-        // Data Store en Memoria (State)
+        // Data Store en Memoria Inicialmente VACÍO
         let workflowData = {
-            id: "wf-demo-01",
-            name: "Flujo de Aprobación de Contratos y Servicios",
-            stages: [
-                {
-                    id: "stage-1",
-                    stage_key: "ETAPA_01_RECEPCION",
-                    title: "1. Recepción y Validación",
-                    is_initial: true,
-                    is_final: false,
-                    substages: [
-                        {
-                            id: "sub-1-1",
-                            substage_key: "SUB_DATOS_PROVEEDOR",
-                            title: "1.1 Datos del Proveedor",
-                            editor_role: "operaciones@democorp.com",
-                            reviewer_role: "supervisores@democorp.com",
-                            service_key: "",
-                            fields: [
-                                { id: "f1", name: "rut", title: "RUT Proveedor", type: "string", required: true },
-                                { id: "f2", name: "razon_social", title: "Razón Social", type: "string", required: true },
-                                { id: "f3", name: "monto_contrato", title: "Monto Contrato (CLP)", type: "number", required: true }
-                            ]
-                        },
-                        {
-                            id: "sub-1-2",
-                            substage_key: "SUB_CALCULO_PLAZOS",
-                            title: "1.2 Determinación de Plazos",
-                            editor_role: "operaciones@democorp.com",
-                            reviewer_role: "legales@democorp.com",
-                            service_key: "SRV_DATE_CALCULATOR",
-                            fields: [
-                                { id: "f4", name: "start_date", title: "Fecha Inicio de Vigencia", type: "date", required: true },
-                                { id: "f5", name: "business_days_to_add", title: "Días Hábiles de Plazo", type: "number", required: true }
-                            ]
-                        }
-                    ]
-                },
-                {
-                    id: "stage-2",
-                    stage_key: "ETAPA_02_EMISION",
-                    title: "2. Emisión y Generación PDF",
-                    is_initial: false,
-                    is_final: true,
-                    substages: [
-                        {
-                            id: "sub-2-1",
-                            substage_key: "SUB_DOC_GENERATOR",
-                            title: "2.1 Generación de Contrato",
-                            editor_role: "legales@democorp.com",
-                            reviewer_role: "gerencia@democorp.com",
-                            service_key: "SRV_DOC_GENERATOR",
-                            fields: [
-                                { id: "f6", name: "observaciones_legales", title: "Observaciones de Emisión", type: "string", required: false }
-                            ]
-                        }
-                    ]
-                }
-            ]
+            id: "wf-custom-01",
+            name: "Workflow Personalizado",
+            stages: [] // INICIA 100% EN BLANCO
         };
 
-        let selectedSubstageId = "sub-1-2";
-        let portalActiveSubstageId = "sub-1-2";
+        let selectedSubstageId = null;
+        let portalActiveSubstageId = null;
         let portalRole = 'editor';
         let portalIteration = 1;
 
@@ -530,9 +479,21 @@
         window.onload = function() {
             lucide.createIcons();
             renderCanvas();
-            renderDrawerForSubstage(selectedSubstageId);
+            renderDrawerForSubstage(null);
             renderPortal();
         };
+
+        // Limpiar Flujo Completo
+        function resetWorkflow() {
+            if (confirm("¿Deseas reiniciar y vaciar todo el workflow?")) {
+                workflowData.stages = [];
+                selectedSubstageId = null;
+                portalActiveSubstageId = null;
+                renderCanvas();
+                renderDrawerForSubstage(null);
+                renderPortal();
+            }
+        }
 
         // Renderizar Nodos en el Canvas
         function renderCanvas() {
@@ -541,15 +502,34 @@
             container.innerHTML = '';
             svgWires.innerHTML = '';
 
+            // Estado Vacío: Si no hay etapas creadas
+            if (workflowData.stages.length === 0) {
+                container.innerHTML = `
+                    <div class="absolute inset-0 flex items-center justify-center" style="min-height: 500px;">
+                        <div class="bg-white/90 backdrop-blur border-2 border-dashed border-slate-300 rounded-2xl p-10 text-center max-w-md shadow-sm">
+                            <div class="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                <i data-lucide="layers" class="w-7 h-7"></i>
+                            </div>
+                            <h3 class="font-bold text-base text-slate-900 mb-1">Lienzo en Blanco</h3>
+                            <p class="text-xs text-slate-500 mb-5">
+                                No hay etapas creadas en este workflow. Comienza agregando tu primera etapa para definir subetapas, campos y roles.
+                            </p>
+                            <button onclick="openAddStageModal()" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/20 flex items-center space-x-2 mx-auto">
+                                <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                                <span>+ Crear Primera Etapa</span>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                lucide.createIcons();
+                return;
+            }
+
             let xOffset = 60;
-            let nodeElements = [];
 
             workflowData.stages.forEach((stage, stageIndex) => {
-                let yOffset = 100;
-                
-                // Card de Etapa Contenedora
                 const stageDiv = document.createElement('div');
-                stageDiv.className = `absolute bg-white/80 backdrop-blur-sm border-2 ${stage.is_initial ? 'border-emerald-400' : 'border-slate-300'} rounded-2xl p-4 shadow-sm`;
+                stageDiv.className = `absolute bg-white/90 backdrop-blur-sm border-2 ${stageIndex === 0 ? 'border-emerald-400' : 'border-slate-300'} rounded-2xl p-4 shadow-sm`;
                 stageDiv.style.left = `${xOffset}px`;
                 stageDiv.style.top = `60px`;
                 stageDiv.style.width = `340px`;
@@ -561,18 +541,25 @@
                             <span class="w-6 h-6 rounded-full bg-slate-800 text-white text-xs font-bold flex items-center justify-center">${stageIndex + 1}</span>
                             <h3 class="font-bold text-xs text-slate-900">${stage.title}</h3>
                         </div>
-                        <button onclick="openAddSubstageModal('${stage.id}')" class="text-[11px] text-blue-600 hover:text-blue-800 font-semibold px-2 py-0.5 rounded bg-blue-50 border border-blue-200">
-                            + Subetapa
-                        </button>
+                        <div class="flex items-center space-x-1">
+                            <button onclick="openAddSubstageModal('${stage.id}')" class="text-[11px] text-blue-600 hover:text-blue-800 font-semibold px-2 py-0.5 rounded bg-blue-50 border border-blue-200">
+                                + Subetapa
+                            </button>
+                            <button onclick="removeStage('${stage.id}')" class="text-slate-400 hover:text-rose-600 p-1">
+                                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                            </button>
+                        </div>
                     </div>
-                    <div class="mt-4 space-y-3" id="stage-substages-${stage.id}"></div>
+                    <div class="mt-4 space-y-3" id="stage-substages-${stage.id}">
+                        ${stage.substages.length === 0 ? '<div class="p-4 text-center text-xs text-slate-400 border border-dashed border-slate-200 rounded-xl">Sin subetapas. Haz clic en "+ Subetapa".</div>' : ''}
+                    </div>
                 `;
 
                 container.appendChild(stageDiv);
 
                 const substagesContainer = stageDiv.querySelector(`#stage-substages-${stage.id}`);
 
-                stage.substages.forEach((sub, subIndex) => {
+                stage.substages.forEach((sub) => {
                     const isSelected = sub.id === selectedSubstageId;
                     const subCard = document.createElement('div');
                     subCard.className = `n8n-node relative bg-white border-2 ${isSelected ? 'border-[#ff6d5a] selected' : 'border-slate-200 hover:border-slate-400'} rounded-xl p-3.5 shadow-md cursor-pointer`;
@@ -595,17 +582,16 @@
                             </div>
                             <div class="flex justify-between">
                                 <span>Editor:</span>
-                                <span class="text-slate-700">${sub.editor_role.split('@')[0]}</span>
+                                <span class="text-slate-700">${sub.editor_role.split('@')[0] || 'No asignado'}</span>
                             </div>
                             <div class="flex justify-between">
                                 <span>Revisor:</span>
-                                <span class="text-amber-700">${sub.reviewer_role.split('@')[0]}</span>
+                                <span class="text-amber-700">${sub.reviewer_role.split('@')[0] || 'No asignado'}</span>
                             </div>
                         </div>
                     `;
 
                     substagesContainer.appendChild(subCard);
-                    nodeElements.push({ id: sub.id, element: subCard });
                 });
 
                 xOffset += 420;
@@ -616,9 +602,7 @@
                 const x1 = 60 + (i * 420) + 340;
                 const x2 = 60 + ((i + 1) * 420);
                 const y = 240;
-
                 const pathD = `M ${x1} ${y} C ${x1 + 40} ${y}, ${x2 - 40} ${y}, ${x2} ${y}`;
-                
                 svgWires.innerHTML += `
                     <path class="wire-glow" d="${pathD}" />
                     <path class="wire-path" d="${pathD}" />
@@ -638,6 +622,7 @@
         }
 
         function findSubstage(subId) {
+            if (!subId) return null;
             for (let stage of workflowData.stages) {
                 for (let sub of stage.substages) {
                     if (sub.id === subId) return { sub, stage };
@@ -649,13 +634,25 @@
         // Renderizar Drawer de la Subetapa seleccionada
         function renderDrawerForSubstage(subId) {
             const result = findSubstage(subId);
-            if (!result) return;
+            const drawerBody = document.getElementById('drawer-body-content');
+            const drawerCloneBtn = document.getElementById('btn-drawer-clone');
+
+            if (!result) {
+                document.getElementById('drawer-substage-title').innerText = "Seleccione una Subetapa";
+                document.getElementById('drawer-substage-key').innerText = "SIN_SELECCION";
+                drawerCloneBtn.classList.add('hidden');
+                document.getElementById('fields-list-container').innerHTML = '<div class="p-6 text-center text-xs text-slate-400">Crea o haz clic en una subetapa del canvas para agregarle campos y microservicios.</div>';
+                document.getElementById('output-schema-preview').innerText = "{}";
+                return;
+            }
+
+            drawerCloneBtn.classList.remove('hidden');
             const { sub, stage } = result;
 
             document.getElementById('drawer-substage-title').innerText = sub.title;
             document.getElementById('drawer-substage-key').innerText = sub.substage_key;
-            document.getElementById('input-role-editor').value = sub.editor_role;
-            document.getElementById('input-role-reviewer').value = sub.reviewer_role;
+            document.getElementById('input-role-editor').value = sub.editor_role || "";
+            document.getElementById('input-role-reviewer').value = sub.reviewer_role || "";
             document.getElementById('select-microservice').value = sub.service_key || "";
 
             // Renderizar Lista de Campos
@@ -663,7 +660,7 @@
             fieldsContainer.innerHTML = '';
 
             if (sub.fields.length === 0) {
-                fieldsContainer.innerHTML = '<div class="p-3 text-center text-xs text-slate-400 bg-slate-50 border border-dashed border-slate-200 rounded-lg">No hay campos configurados. Presione "+ Agregar Campo".</div>';
+                fieldsContainer.innerHTML = '<div class="p-4 text-center text-xs text-slate-400 bg-slate-50 border border-dashed border-slate-200 rounded-lg">No hay campos aún. Haz clic en "+ Agregar Campo".</div>';
             } else {
                 sub.fields.forEach((field, index) => {
                     const row = document.createElement('div');
@@ -673,7 +670,7 @@
                             <span class="w-5 h-5 rounded bg-orange-100 text-[#ea580c] font-mono text-[10px] font-bold flex items-center justify-center">${index + 1}</span>
                             <div>
                                 <div class="font-bold text-slate-800">${field.title}</div>
-                                <div class="font-mono text-[10px] text-slate-500">${field.name} • <span class="text-blue-600 font-semibold">${field.type}</span> ${field.required ? '• <span class="text-rose-600">Requerido</span>' : ''}</div>
+                                <div class="font-mono text-[10px] text-slate-500">${field.name} • <span class="text-blue-600 font-semibold">${field.type}</span> ${field.required ? '• <span class="text-rose-600">Obligatorio</span>' : ''}</div>
                             </div>
                         </div>
                         <button onclick="removeField('${sub.id}', '${field.id}')" class="text-slate-400 hover:text-rose-600 p-1">
@@ -701,6 +698,10 @@
         // =========================================================================
 
         function openAddFieldModal() {
+            if (!selectedSubstageId) {
+                alert("Primero debes crear o seleccionar una subetapa en el lienzo.");
+                return;
+            }
             document.getElementById('new-field-title').value = '';
             document.getElementById('new-field-name').value = '';
             document.getElementById('modal-add-field').classList.remove('hidden');
@@ -713,7 +714,7 @@
             const required = document.getElementById('new-field-required').checked;
 
             if (!title) {
-                alert("Por favor ingrese el título del campo.");
+                alert("Por favor ingresa el título del campo.");
                 return;
             }
 
@@ -744,8 +745,9 @@
         }
 
         function openAddStageModal() {
-            document.getElementById('new-stage-title').value = '';
-            document.getElementById('new-stage-key').value = '';
+            const nextIndex = workflowData.stages.length + 1;
+            document.getElementById('new-stage-title').value = `Etapa ${nextIndex}: `;
+            document.getElementById('new-stage-key').value = `ETAPA_0${nextIndex}`;
             document.getElementById('modal-add-stage').classList.remove('hidden');
         }
 
@@ -754,34 +756,49 @@
             const key = document.getElementById('new-stage-key').value.trim() || title.toUpperCase().replace(/\s+/g, '_');
 
             if (!title) {
-                alert("Por favor ingrese el nombre de la etapa.");
+                alert("Por favor ingresa el nombre de la etapa.");
                 return;
             }
 
+            const isInitial = workflowData.stages.length === 0;
+            const newSubId = "sub_" + Date.now();
             const newStage = {
                 id: "stage_" + Date.now(),
                 stage_key: key,
                 title: title,
-                is_initial: false,
+                is_initial: isInitial,
                 is_final: false,
                 substages: [
                     {
-                        id: "sub_" + Date.now(),
+                        id: newSubId,
                         substage_key: key + "_SUB1",
                         title: title + " - Formulario Inicial",
-                        editor_role: "operaciones@democorp.com",
-                        reviewer_role: "supervisores@democorp.com",
+                        editor_role: "operaciones@miempresa.com",
+                        reviewer_role: "supervisores@miempresa.com",
                         service_key: "",
-                        fields: [
-                            { id: "f_" + Date.now(), name: "campo_1", title: "Campo de Entrada", type: "string", required: true }
-                        ]
+                        fields: []
                     }
                 ]
             };
 
             workflowData.stages.push(newStage);
+            selectedSubstageId = newSubId;
+            portalActiveSubstageId = newSubId;
             closeModal('modal-add-stage');
             renderCanvas();
+            renderDrawerForSubstage(newSubId);
+            renderPortal();
+        }
+
+        function removeStage(stageId) {
+            if (confirm("¿Eliminar esta etapa y sus subetapas?")) {
+                workflowData.stages = workflowData.stages.filter(s => s.id !== stageId);
+                selectedSubstageId = null;
+                portalActiveSubstageId = null;
+                renderCanvas();
+                renderDrawerForSubstage(null);
+                renderPortal();
+            }
         }
 
         function openAddSubstageModal(stageId) {
@@ -793,15 +810,14 @@
                         id: "sub_" + Date.now(),
                         substage_key: "SUB_" + Date.now(),
                         title: subTitle,
-                        editor_role: "operaciones@democorp.com",
-                        reviewer_role: "supervisores@democorp.com",
+                        editor_role: "operaciones@miempresa.com",
+                        reviewer_role: "supervisores@miempresa.com",
                         service_key: "",
-                        fields: [
-                            { id: "f_" + Date.now(), name: "descripcion", title: "Descripción", type: "string", required: true }
-                        ]
+                        fields: []
                     };
                     stage.substages.push(newSub);
                     selectedSubstageId = newSub.id;
+                    portalActiveSubstageId = newSub.id;
                     renderCanvas();
                     renderDrawerForSubstage(newSub.id);
                     renderPortal();
@@ -823,7 +839,7 @@
                 renderCanvas();
                 renderDrawerForSubstage(cloned.id);
                 renderPortal();
-                alert(`📋 Subetapa '${newTitle}' clonada exitosamente con todos sus campos y roles.`);
+                alert(`📋 Subetapa '${newTitle}' clonada con todos sus campos.`);
             }
         }
 
@@ -838,7 +854,7 @@
             const name = document.getElementById('new-srv-name').value.trim();
             const key = document.getElementById('new-srv-key').value.trim();
             if (!name || !key) {
-                alert("Por favor complete el nombre y clave del microservicio.");
+                alert("Por favor completa el nombre y clave del microservicio.");
                 return;
             }
             const select = document.getElementById('select-microservice');
@@ -916,8 +932,18 @@
         // PORTAL OPERATIVO (EJECUCIÓN, FORMULARIOS DINÁMICOS, ROLES Y VOLVER)
         // =========================================================================
         function renderPortal() {
-            const result = findSubstage(portalActiveSubstageId);
-            if (!result) return;
+            const form = document.getElementById('portal-dynamic-form');
+            form.innerHTML = '';
+
+            if (workflowData.stages.length === 0) {
+                document.getElementById('exec-portal-stage-title').innerText = "Sin etapas configuradas";
+                document.getElementById('exec-portal-sub-title').innerText = "Crea tu primera etapa en el Diseñador";
+                form.innerHTML = '<div class="p-8 text-center text-xs text-slate-400 bg-slate-50 border border-dashed border-slate-200 rounded-xl">Regresa al "Diseñador Visual" y agrega tu primera etapa y campos.</div>';
+                return;
+            }
+
+            const result = findSubstage(portalActiveSubstageId) || { sub: workflowData.stages[0].substages[0], stage: workflowData.stages[0] };
+            if (!result || !result.sub) return;
             const { sub, stage } = result;
 
             document.getElementById('exec-portal-stage-title').innerText = "Etapa: " + stage.title;
@@ -926,7 +952,7 @@
 
             // Deshabilitar botón Volver si es la etapa inicial
             const btnVolver = document.getElementById('portal-btn-volver');
-            if (stage.is_initial && stage.substages[0].id === sub.id) {
+            if (stage.is_initial && stage.substages[0] && stage.substages[0].id === sub.id) {
                 btnVolver.classList.add('opacity-40', 'cursor-not-allowed');
                 btnVolver.title = "No se puede volver en la etapa inicial";
             } else {
@@ -934,36 +960,36 @@
                 btnVolver.title = "Retroceder a la subetapa anterior";
             }
 
-            // Renderizar Formulario con los Campos Reales Creados
-            const form = document.getElementById('portal-dynamic-form');
-            form.innerHTML = '';
+            if (sub.fields.length === 0) {
+                form.innerHTML = '<div class="p-4 text-center text-xs text-slate-400 bg-slate-50 border border-dashed border-slate-200 rounded-xl">Esta subetapa no tiene campos agregados aún. Agrega campos en el Diseñador.</div>';
+            } else {
+                sub.fields.forEach(field => {
+                    const group = document.createElement('div');
+                    let inputHtml = '';
 
-            sub.fields.forEach(field => {
-                const group = document.createElement('div');
-                let inputHtml = '';
+                    if (field.type === 'date') {
+                        inputHtml = `<input type="date" value="2026-10-07" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-[#ff6d5a] focus:outline-none shadow-sm">`;
+                    } else if (field.type === 'number') {
+                        inputHtml = `<input type="number" placeholder="0" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-[#ff6d5a] focus:outline-none shadow-sm">`;
+                    } else if (field.type === 'boolean') {
+                        inputHtml = `<div class="flex items-center space-x-2 pt-1"><input type="checkbox" checked class="rounded text-[#ff6d5a]"><span class="text-xs text-slate-700">Aceptado / Confirmado</span></div>`;
+                    } else if (field.type === 'file') {
+                        inputHtml = `<input type="file" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-xs text-slate-500">`;
+                    } else {
+                        inputHtml = `<input type="text" placeholder="Ingrese ${field.title}..." class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-[#ff6d5a] focus:outline-none shadow-sm">`;
+                    }
 
-                if (field.type === 'date') {
-                    inputHtml = `<input type="date" value="2026-10-07" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-[#ff6d5a] focus:outline-none shadow-sm">`;
-                } else if (field.type === 'number') {
-                    inputHtml = `<input type="number" value="30" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-[#ff6d5a] focus:outline-none shadow-sm">`;
-                } else if (field.type === 'boolean') {
-                    inputHtml = `<div class="flex items-center space-x-2 pt-1"><input type="checkbox" checked class="rounded text-[#ff6d5a]"><span class="text-xs text-slate-700">Aceptado / Confirmado</span></div>`;
-                } else if (field.type === 'file') {
-                    inputHtml = `<input type="file" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-xs text-slate-500">`;
-                } else {
-                    inputHtml = `<input type="text" placeholder="Ingrese ${field.title}..." class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-[#ff6d5a] focus:outline-none shadow-sm">`;
-                }
+                    group.innerHTML = `
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">
+                            ${field.title} ${field.required ? '<span class="text-rose-500">*</span>' : ''}
+                        </label>
+                        ${inputHtml}
+                    `;
+                    form.appendChild(group);
+                });
+            }
 
-                group.innerHTML = `
-                    <label class="block text-xs font-semibold text-slate-700 mb-1">
-                        ${field.title} ${field.required ? '<span class="text-rose-500">*</span>' : ''}
-                    </label>
-                    ${inputHtml}
-                `;
-                form.appendChild(group);
-            });
-
-            // Si tiene microservicio asociado, mostrar botón de disparo
+            // Si tiene microservicio asociado
             if (sub.service_key) {
                 const srvBox = document.createElement('div');
                 srvBox.className = "p-3.5 bg-indigo-50 border border-indigo-200 rounded-xl space-y-2";
@@ -973,7 +999,7 @@
                             <i data-lucide="zap" class="w-4 h-4 text-indigo-600"></i>
                             <span>Microservicio Asociado: ${sub.service_key}</span>
                         </span>
-                        <button type="button" onclick="alert('⚡ Microservicio ejecutado en Cloud Run. Output inyectado en la siguiente fase.')" class="text-[11px] bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-2.5 py-1 rounded shadow-sm">
+                        <button type="button" onclick="alert('⚡ Microservicio ejecutado en Cloud Run.')" class="text-[11px] bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-2.5 py-1 rounded shadow-sm">
                             Ejecutar Microservicio
                         </button>
                     </div>
@@ -1008,23 +1034,20 @@
         }
 
         function portalSubmitEditor() {
-            alert("✅ Datos guardados y validados contra el input_schema. Estado: EN REVISIÓN.");
-            addAuditLog("SUBMITTED", "Datos ingresados por operaciones@democorp.com");
+            alert("✅ Datos guardados y validados contra el esquema. Estado: EN REVISIÓN.");
+            addAuditLog("SUBMITTED", "Datos ingresados por Editor");
             switchPortalRole('reviewer');
         }
 
         function portalApproveSubstage() {
-            alert("🎉 Subetapa APROBADA por el Revisor. Avanzando a la siguiente fase.");
-            addAuditLog("APPROVED", "Aprobado por supervisores@democorp.com");
-            // Avanzar
-            portalActiveSubstageId = "sub-2-1";
-            renderPortal();
+            alert("🎉 Subetapa APROBADA por el Revisor.");
+            addAuditLog("APPROVED", "Aprobado por Revisor");
         }
 
         function portalRejectSubstage() {
             const comments = document.getElementById('portal-review-comments').value || "Se requiere corregir datos.";
             alert(`⚠️ Rechazado: "${comments}". El flujo retorna al Editor.`);
-            addAuditLog("REJECTED", `Rechazado con notas: ${comments}`);
+            addAuditLog("REJECTED", `Rechazado: ${comments}`);
             switchPortalRole('editor');
         }
 
@@ -1034,13 +1057,12 @@
                 alert("❌ No se puede retroceder: Esta es la etapa inicial del workflow.");
                 return;
             }
-            const confirmRollback = confirm("¿Desea retroceder a la subetapa anterior? Se creará una nueva iteración en la auditoría.");
+            const confirmRollback = confirm("¿Deseas retroceder a la subetapa anterior? Se creará una nueva iteración en la auditoría.");
             if (confirmRollback) {
                 portalIteration++;
-                portalActiveSubstageId = "sub-1-1";
-                addAuditLog("ROLLBACK", `Retroceso a 1.1 Datos Proveedor (Iteración ${portalIteration})`);
+                addAuditLog("ROLLBACK", `Retroceso a etapa anterior (Iteración ${portalIteration})`);
                 renderPortal();
-                alert(`⏪ Retroceso completado: Ahora en subetapa 1.1 (Iteración ${portalIteration}).`);
+                alert(`⏪ Retroceso completado (Iteración ${portalIteration}).`);
             }
         }
 
