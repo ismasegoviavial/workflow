@@ -51,28 +51,13 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: Authorize Docker Push to Artifact Registry
-        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
-
-      # 1. Build & Deploy Workflow Core Engine
-      - name: Deploy Workflow Engine API to Cloud Run
+      # 1. Build & Deploy Workflow Core Engine (UI + Engine + API)
+      - name: Deploy Workflow Engine to Cloud Run
         run: |
-          IMAGE="${{ env.GAR_LOCATION }}/${{ env.PROJECT_ID }}/workflows/workflow-engine-api:${{ github.sha }}"
-          docker build -t $IMAGE ./apps/workflow-engine-api
-          docker push $IMAGE
           gcloud run deploy workflow-engine-api \
-            --image $IMAGE \
+            --source apps/workflow-engine-api \
             --region ${{ env.REGION }} \
             --platform managed \
-            --allow-unauthenticated
-
-      # 2. Deploy Microservices
-      - name: Deploy PDF Reader Microservice
-        run: |
-          IMAGE="${{ env.GAR_LOCATION }}/${{ env.PROJECT_ID }}/workflows/srv-pdf-reader:${{ github.sha }}"
-          docker build -t $IMAGE ./services/srv-pdf-reader
-          docker push $IMAGE
-          gcloud run deploy srv-pdf-reader \
-            --image $IMAGE \
-            --region ${{ env.REGION }} \
-            --platform managed
+            --allow-unauthenticated \
+            --project ${{ env.PROJECT_ID }} \
+            --quiet
