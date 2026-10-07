@@ -32,6 +32,16 @@ app.include_router(catalog.router)
 def health_check():
     return {"status": "ok", "service": "workflow-engine-core"}
 
+import os
+from fastapi.responses import FileResponse
+
+@app.get("/", include_in_schema=False)
+def serve_ui():
+    static_path = os.path.join(os.path.dirname(__file__), "static", "index.html")
+    if os.path.exists(static_path):
+        return FileResponse(static_path)
+    return {"message": "Workflow Engine API is live. Visit /docs for Swagger UI."}
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("src.main:app", host="0.0.0.0", port=8000, reload=True)
