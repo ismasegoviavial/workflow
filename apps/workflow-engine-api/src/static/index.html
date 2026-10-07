@@ -1,347 +1,545 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" class="h-full">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Workflow Engine Platform | GCP Cloud Run</title>
+    <title>n8n-Style Workflow Platform | Multi-Tenant GCP</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        .node-card {
-            transition: all 0.2s ease;
+        /* n8n-style Canvas Dot Grid */
+        .canvas-bg {
+            background-color: #1a1b1e;
+            background-image: radial-gradient(#2e3035 1.5px, transparent 1.5px);
+            background-size: 24px 24px;
         }
-        .node-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+
+        /* Node Styling */
+        .n8n-node {
+            transition: box-shadow 0.15s ease, border-color 0.15s ease;
+            user-select: none;
+            cursor: grab;
         }
-        .step-active {
-            border-color: #3b82f6;
-            background-color: #eff6ff;
+        .n8n-node:active {
+            cursor: grabbing;
+        }
+        .n8n-node.selected {
+            border-color: #ff6d5a !important;
+            box-shadow: 0 0 0 2px rgba(255, 109, 90, 0.4), 0 12px 24px -6px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Handle Connectors */
+        .node-handle {
+            width: 12px;
+            height: 12px;
+            background: #ff6d5a;
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            transition: transform 0.15s ease;
+            z-index: 10;
+        }
+        .node-handle.left {
+            left: -6px;
+        }
+        .node-handle.right {
+            right: -6px;
+        }
+        .node-handle:hover {
+            transform: translateY(-50%) scale(1.3);
+            background: #ffffff;
+            border-color: #ff6d5a;
+        }
+
+        /* Bezier Connection Wires */
+        .wire-path {
+            fill: none;
+            stroke: #ff6d5a;
+            stroke-width: 2.5px;
+            stroke-linecap: round;
+        }
+        .wire-glow {
+            fill: none;
+            stroke: rgba(255, 109, 90, 0.15);
+            stroke-width: 8px;
+        }
+        
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e1f23;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #34373d;
+            border-radius: 3px;
         }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
+<body class="h-full bg-[#141517] text-slate-200 antialiased flex flex-col font-sans overflow-hidden">
 
-    <!-- Navbar -->
-    <header class="bg-white border-b border-slate-200 sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <div class="flex items-center space-x-3">
-                <div class="w-10 h-10 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center text-white shadow-md shadow-blue-500/20">
-                    <i data-lucide="git-merge" class="w-6 h-6"></i>
+    <!-- Top Navigation Bar (n8n style) -->
+    <header class="h-14 bg-[#1e1f23] border-b border-[#2e3035] px-4 flex items-center justify-between z-40 shrink-0">
+        <div class="flex items-center space-x-4">
+            <!-- n8n Brand Mark -->
+            <div class="flex items-center space-x-2.5">
+                <div class="w-8 h-8 bg-[#ff6d5a] rounded-lg flex items-center justify-center text-white font-black text-sm shadow-md shadow-[#ff6d5a]/20">
+                    n8
                 </div>
                 <div>
-                    <h1 class="font-bold text-lg text-slate-900 leading-tight">Workflow Engine Platform</h1>
-                    <div class="flex items-center space-x-2 text-xs text-slate-500">
-                        <span class="inline-flex items-center px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-medium">GCP Cloud Run</span>
+                    <div class="flex items-center space-x-2">
+                        <span class="font-bold text-sm text-white tracking-wide">Workflow Studio</span>
+                        <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#2a2d34] text-emerald-400 border border-emerald-500/30">Activo</span>
+                    </div>
+                    <div class="text-[11px] text-slate-400 flex items-center space-x-2">
+                        <span>Tenant: <strong class="text-slate-200 font-mono" id="tenant-label">DEMOCORP</strong></span>
                         <span>•</span>
-                        <span>Tenant: <strong id="current-tenant">DEMOCORP</strong></span>
+                        <span class="font-mono text-[#ff8f7f]" id="exec-code-label">DEMOCORP-CONTRATOS-2026-00001</span>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- Role Simulator & Workspace User Switcher -->
-            <div class="flex items-center space-x-4">
-                <div class="bg-slate-100 p-1.5 rounded-lg flex items-center space-x-2 text-xs border border-slate-200">
-                    <span class="text-slate-500 font-medium pl-2">Simular Rol:</span>
-                    <button id="role-btn-editor" onclick="switchRole('editor')" class="px-2.5 py-1 rounded-md bg-blue-600 text-white font-medium shadow-sm">
-                        ✏️ Editor / Ejecutor
-                    </button>
-                    <button id="role-btn-reviewer" onclick="switchRole('reviewer')" class="px-2.5 py-1 rounded-md text-slate-600 hover:bg-slate-200 font-medium">
-                        🛡️ Revisor / Aprobador
-                    </button>
-                </div>
-                <a href="/docs" target="_blank" class="text-xs font-semibold text-indigo-600 hover:text-indigo-800 bg-indigo-50 border border-indigo-200 px-3 py-1.5 rounded-lg flex items-center space-x-1">
-                    <span>Swagger API</span>
-                    <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
-                </a>
+        <!-- Center Controls: Execute, Volver, Roles -->
+        <div class="flex items-center space-x-2">
+            <!-- Botón Volver / Rollback -->
+            <button id="btn-rollback" onclick="triggerRollback()" class="px-3 py-1.5 rounded-lg bg-[#2a2d34] hover:bg-[#34373e] text-amber-400 hover:text-amber-300 text-xs font-semibold border border-amber-500/30 flex items-center space-x-1.5 transition">
+                <i data-lucide="undo-2" class="w-3.5 h-3.5"></i>
+                <span>Volver (Rollback)</span>
+            </button>
+
+            <!-- Simular Rol Google Workspace -->
+            <div class="bg-[#141517] p-1 rounded-lg flex items-center space-x-1 border border-[#2e3035] text-xs">
+                <button id="role-btn-editor" onclick="switchRole('editor')" class="px-2.5 py-1 rounded-md bg-[#ff6d5a] text-white font-medium shadow-sm transition">
+                    ✏️ Rol Editor
+                </button>
+                <button id="role-btn-reviewer" onclick="switchRole('reviewer')" class="px-2.5 py-1 rounded-md text-slate-400 hover:text-slate-200 font-medium transition">
+                    🛡️ Rol Revisor
+                </button>
             </div>
+
+            <!-- Botón Test Execution -->
+            <button onclick="executeWorkflowStep()" class="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/20 flex items-center space-x-1.5 transition">
+                <i data-lucide="play" class="w-3.5 h-3.5 fill-current"></i>
+                <span>Test Step / Ejecutar</span>
+            </button>
+        </div>
+
+        <!-- Right Side: API docs & Actions -->
+        <div class="flex items-center space-x-3">
+            <button onclick="addNodeModal()" class="px-3 py-1.5 rounded-lg bg-[#2a2d34] hover:bg-[#34373e] text-slate-200 text-xs font-semibold border border-[#3e424b] flex items-center space-x-1.5 transition">
+                <i data-lucide="plus" class="w-3.5 h-3.5 text-[#ff6d5a]"></i>
+                <span>Agregar Nodo</span>
+            </button>
+            <a href="/docs" target="_blank" class="px-2.5 py-1.5 rounded-lg bg-[#2a2d34] text-slate-300 hover:text-white text-xs border border-[#3e424b] flex items-center space-x-1">
+                <span>Docs</span>
+                <i data-lucide="external-link" class="w-3 h-3"></i>
+            </a>
         </div>
     </header>
 
-    <!-- Main Container -->
-    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+    <!-- Canvas & Drawer Container -->
+    <div class="flex-1 relative overflow-hidden flex">
 
-        <!-- Left Column: Workflow Navigation & Canvas (5 cols) -->
-        <section class="lg:col-span-5 flex flex-col space-y-4">
-            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                <div class="flex items-center justify-between mb-3">
-                    <h2 class="font-bold text-slate-900 flex items-center space-x-2">
-                        <i data-lucide="layers" class="w-4 h-4 text-blue-600"></i>
-                        <span>Flujo: Aprobación de Contratos</span>
-                    </h2>
-                    <span class="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded font-mono font-medium" id="execution-key-badge">
-                        DEMOCORP-CONTRATOS-2026-00001
-                    </span>
+        <!-- Visual Canvas (Interactive Graph) -->
+        <div id="workflow-canvas" class="flex-1 canvas-bg relative overflow-auto p-12 cursor-grab active:cursor-grabbing">
+            
+            <!-- SVG Cables / Connections Layer -->
+            <svg id="svg-wires" class="absolute inset-0 w-full h-full pointer-events-none z-0" style="min-width: 2000px; min-height: 1200px;">
+                <!-- Cable 1 -> 2 -->
+                <path id="wire-1-2" class="wire-glow" d="M 370 200 C 440 200, 460 200, 530 200" />
+                <path id="wire-1-2-main" class="wire-path" d="M 370 200 C 440 200, 460 200, 530 200" />
+
+                <!-- Cable 2 -> 3 -->
+                <path id="wire-2-3" class="wire-glow" d="M 830 200 C 900 200, 920 200, 990 200" />
+                <path id="wire-2-3-main" class="wire-path" d="M 830 200 C 900 200, 920 200, 990 200" />
+
+                <!-- Cable 3 -> 4 (Microservicio paralelo) -->
+                <path id="wire-3-4" class="wire-glow" d="M 1290 200 C 1360 200, 1380 340, 1450 340" />
+                <path id="wire-3-4-main" class="wire-path" d="M 1290 200 C 1360 200, 1380 340, 1450 340" />
+            </svg>
+
+            <!-- Interactive Canvas Nodes -->
+            <div class="relative z-10" style="min-width: 1800px; min-height: 1000px;">
+
+                <!-- NODO 1: TRIGGER / INICIO -->
+                <div id="node-1" onclick="openNodeDrawer(1)" class="n8n-node absolute w-72 bg-[#22242a] border-2 border-emerald-500 rounded-xl shadow-xl p-4 top-[140px] left-[70px]">
+                    <div class="node-handle right"></div>
+                    <div class="flex items-center justify-between pb-3 border-b border-[#2e3035]">
+                        <div class="flex items-center space-x-2.5">
+                            <div class="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                                <i data-lucide="play" class="w-4 h-4 fill-current"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-xs text-white">Etapa 1: Recepción</h4>
+                                <span class="text-[10px] text-slate-400">Trigger Inicial</span>
+                            </div>
+                        </div>
+                        <span class="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-semibold uppercase">Listo</span>
+                    </div>
+                    <div class="mt-3 text-xs space-y-1.5">
+                        <div class="flex justify-between text-slate-400 text-[11px]">
+                            <span>Subetapa:</span>
+                            <span class="text-slate-200 font-medium">1.1 Ingreso Proveedor</span>
+                        </div>
+                        <div class="flex justify-between text-slate-400 text-[11px]">
+                            <span>Editor:</span>
+                            <span class="text-blue-400">operaciones@democorp</span>
+                        </div>
+                    </div>
                 </div>
-                <p class="text-xs text-slate-500">
-                    Estructura de etapas y subetapas configurables. Cada subetapa cuenta con roles aislados, esquemas de entrada/salida y servicios asociados.
-                </p>
+
+                <!-- NODO 2: SUBETAPA 1.2 (CALCULADOR DE PLAZOS) -->
+                <div id="node-2" onclick="openNodeDrawer(2)" class="n8n-node selected absolute w-72 bg-[#22242a] border-2 border-[#ff6d5a] rounded-xl shadow-xl p-4 top-[140px] left-[530px]">
+                    <div class="node-handle left"></div>
+                    <div class="node-handle right"></div>
+                    <div class="flex items-center justify-between pb-3 border-b border-[#2e3035]">
+                        <div class="flex items-center space-x-2.5">
+                            <div class="w-7 h-7 rounded-lg bg-[#ff6d5a]/20 text-[#ff6d5a] flex items-center justify-center">
+                                <i data-lucide="calculator" class="w-4 h-4"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-xs text-white">Subetapa 1.2: Plazos</h4>
+                                <span class="text-[10px] text-amber-400 font-medium">En Revisión</span>
+                            </div>
+                        </div>
+                        <span class="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-semibold uppercase animate-pulse">Activo</span>
+                    </div>
+                    <div class="mt-3 text-xs space-y-1.5">
+                        <div class="flex justify-between text-slate-400 text-[11px]">
+                            <span>Microservicio:</span>
+                            <span class="text-indigo-400 font-mono text-[10px]">SRV_DATE_CALC</span>
+                        </div>
+                        <div class="flex justify-between text-slate-400 text-[11px]">
+                            <span>Revisor:</span>
+                            <span class="text-amber-400">supervisores@democorp</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- NODO 3: ETAPA 2 (GENERADOR DE DOCUMENTOS) -->
+                <div id="node-3" onclick="openNodeDrawer(3)" class="n8n-node absolute w-72 bg-[#22242a] border-2 border-[#34373d] hover:border-slate-500 rounded-xl shadow-xl p-4 top-[140px] left-[990px]">
+                    <div class="node-handle left"></div>
+                    <div class="node-handle right"></div>
+                    <div class="flex items-center justify-between pb-3 border-b border-[#2e3035]">
+                        <div class="flex items-center space-x-2.5">
+                            <div class="w-7 h-7 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
+                                <i data-lucide="file-check-2" class="w-4 h-4"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-xs text-white">Etapa 2: Emisión PDF</h4>
+                                <span class="text-[10px] text-slate-400">Fase Siguiente</span>
+                            </div>
+                        </div>
+                        <span class="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-semibold uppercase">Espera</span>
+                    </div>
+                    <div class="mt-3 text-xs space-y-1.5">
+                        <div class="flex justify-between text-slate-400 text-[11px]">
+                            <span>Input Esperado:</span>
+                            <span class="text-slate-300 font-mono text-[10px]">due_date, monto</span>
+                        </div>
+                        <div class="flex justify-between text-slate-400 text-[11px]">
+                            <span>Revisor:</span>
+                            <span class="text-slate-400">legales@democorp</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- NODO 4: MICROSERVICIO PARALELO (PDF EXTRACTOR OCR) -->
+                <div id="node-4" onclick="openNodeDrawer(4)" class="n8n-node absolute w-72 bg-[#1b2230] border-2 border-indigo-500/60 rounded-xl shadow-xl p-4 top-[280px] left-[1450px]">
+                    <div class="node-handle left"></div>
+                    <div class="flex items-center justify-between pb-3 border-b border-[#283247]">
+                        <div class="flex items-center space-x-2.5">
+                            <div class="w-7 h-7 rounded-lg bg-indigo-500/20 text-indigo-300 flex items-center justify-center">
+                                <i data-lucide="cpu" class="w-4 h-4"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-xs text-white">Fábrica: OCR Reader</h4>
+                                <span class="text-[10px] text-indigo-300">Carril Microservicio</span>
+                            </div>
+                        </div>
+                        <span class="text-[9px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-semibold uppercase">Cloud Run</span>
+                    </div>
+                    <div class="mt-3 text-xs space-y-1.5">
+                        <div class="flex justify-between text-slate-400 text-[11px]">
+                            <span>Endpoint:</span>
+                            <span class="text-slate-300 font-mono text-[10px]">/api/v1/extract</span>
+                        </div>
+                    </div>
+                </div>
+
             </div>
+        </div>
 
-            <!-- Visual Flow Stages List -->
-            <div class="space-y-4" id="stages-container">
-                <!-- Etapa 1 -->
-                <div class="bg-white rounded-xl border-2 border-blue-500 p-4 shadow-sm relative node-card">
-                    <div class="flex items-center justify-between pb-2 border-b border-slate-100">
-                        <div class="flex items-center space-x-2">
-                            <span class="w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center">1</span>
-                            <h3 class="font-semibold text-sm text-slate-900">Recepción y Validación</h3>
-                        </div>
-                        <span class="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-medium">Etapa Inicial</span>
+        <!-- Side Drawer: Node Configuration & Runtime Execution Panel (n8n style) -->
+        <aside id="node-drawer" class="w-[450px] bg-[#1e1f23] border-l border-[#2e3035] flex flex-col z-30 shadow-2xl shrink-0">
+            
+            <!-- Drawer Header -->
+            <div class="p-4 border-b border-[#2e3035] flex items-center justify-between bg-[#191a1d]">
+                <div class="flex items-center space-x-2.5">
+                    <div id="drawer-icon" class="w-8 h-8 rounded-lg bg-[#ff6d5a]/20 text-[#ff6d5a] flex items-center justify-center font-bold">
+                        <i data-lucide="settings" class="w-4 h-4"></i>
                     </div>
-
-                    <!-- Subetapas -->
-                    <div class="mt-3 space-y-2">
-                        <div class="p-3 bg-blue-50/70 border border-blue-200 rounded-lg flex items-center justify-between cursor-pointer" onclick="selectSubstage('sub_1_1')">
-                            <div>
-                                <div class="font-medium text-xs text-blue-900 flex items-center space-x-1.5">
-                                    <i data-lucide="file-text" class="w-3.5 h-3.5 text-blue-600"></i>
-                                    <span>1.1 Datos del Proveedor</span>
-                                </div>
-                                <div class="text-[11px] text-blue-700 mt-0.5">Formulario Dinámico • Editor: Mesa Entrada</div>
-                            </div>
-                            <span id="badge-sub-1-1" class="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-medium">Completado</span>
-                        </div>
-
-                        <div class="p-3 bg-white border border-slate-200 rounded-lg flex items-center justify-between cursor-pointer hover:border-blue-400" onclick="selectSubstage('sub_1_2')">
-                            <div>
-                                <div class="font-medium text-xs text-slate-800 flex items-center space-x-1.5">
-                                    <i data-lucide="cpu" class="w-3.5 h-3.5 text-indigo-600"></i>
-                                    <span>1.2 Cálculo de Plazos</span>
-                                </div>
-                                <div class="text-[11px] text-slate-500 mt-0.5">Microservicio: Calculador Días Hábiles</div>
-                            </div>
-                            <span id="badge-sub-1-2" class="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-medium">En Curso</span>
-                        </div>
+                    <div>
+                        <h3 id="drawer-title" class="font-bold text-sm text-white">Subetapa 1.2: Cálculo de Plazos</h3>
+                        <span id="drawer-code" class="text-[11px] font-mono text-slate-400">SUB_CALCULO_PLAZOS</span>
                     </div>
                 </div>
-
-                <!-- Conector Visual -->
-                <div class="flex justify-center">
-                    <div class="w-0.5 h-6 bg-slate-300"></div>
-                </div>
-
-                <!-- Etapa 2 -->
-                <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm relative node-card">
-                    <div class="flex items-center justify-between pb-2 border-b border-slate-100">
-                        <div class="flex items-center space-x-2">
-                            <span class="w-6 h-6 rounded-full bg-slate-200 text-slate-700 text-xs font-bold flex items-center justify-center">2</span>
-                            <h3 class="font-semibold text-sm text-slate-900">Emisión y Generación de PDF</h3>
-                        </div>
-                        <span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-medium">Etapa Final</span>
-                    </div>
-
-                    <!-- Subetapas -->
-                    <div class="mt-3 space-y-2">
-                        <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between">
-                            <div>
-                                <div class="font-medium text-xs text-slate-600 flex items-center space-x-1.5">
-                                    <i data-lucide="file-check" class="w-3.5 h-3.5 text-slate-400"></i>
-                                    <span>2.1 Generación de Documento</span>
-                                </div>
-                                <div class="text-[11px] text-slate-400 mt-0.5">Microservicio: Doc Generator</div>
-                            </div>
-                            <span class="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-medium">Pendiente</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Botón Clonar Subetapa -->
-            <div class="pt-2">
-                <button onclick="cloneSubstageModal()" class="w-full py-2.5 px-4 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold flex items-center justify-center space-x-2 shadow-sm">
-                    <i data-lucide="copy" class="w-4 h-4 text-slate-500"></i>
-                    <span>Clonar Subetapa a otra Etapa</span>
+                <button onclick="cloneSubstageAction()" title="Clonar Subetapa" class="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-[#2a2d34] transition">
+                    <i data-lucide="copy" class="w-4 h-4"></i>
                 </button>
             </div>
-        </section>
 
-        <!-- Right Column: Active Substage Interaction, Schemas & Review Gateway (7 cols) -->
-        <section class="lg:col-span-7 flex flex-col space-y-4">
-            
-            <!-- Active Substage Panel -->
-            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-                <div class="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
-                    <div>
-                        <div class="flex items-center space-x-2">
-                            <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-blue-100 text-blue-800" id="substage-code">SUB_CALCULO_PLAZOS</span>
-                            <h2 class="font-bold text-base text-slate-900" id="substage-title">Determinación de Plazos y Fecha Límite</h2>
-                        </div>
-                        <p class="text-xs text-slate-500 mt-1" id="substage-desc">
-                            Esta subetapa utiliza el microservicio de cálculo de fechas hábiles para emitir el plazo legal.
-                        </p>
-                    </div>
+            <!-- Drawer Tabs -->
+            <div class="flex border-b border-[#2e3035] text-xs bg-[#191a1d]">
+                <button id="tab-btn-exec" onclick="switchDrawerTab('exec')" class="flex-1 py-2.5 text-center font-bold text-[#ff6d5a] border-b-2 border-[#ff6d5a]">
+                    Ejecución & Datos
+                </button>
+                <button id="tab-btn-schema" onclick="switchDrawerTab('schema')" class="flex-1 py-2.5 text-center font-medium text-slate-400 hover:text-slate-200">
+                    Esquemas JSON
+                </button>
+                <button id="tab-btn-roles" onclick="switchDrawerTab('roles')" class="flex-1 py-2.5 text-center font-medium text-slate-400 hover:text-slate-200">
+                    Roles Workspace
+                </button>
+            </div>
 
-                    <!-- Botón Volver (Rollback) -->
-                    <button id="btn-volver" onclick="triggerRollback()" class="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition">
-                        <i data-lucide="undo-2" class="w-3.5 h-3.5"></i>
-                        <span>Volver (Rollback)</span>
-                    </button>
-                </div>
-
-                <!-- Content: Form Editor Mode vs Reviewer Mode -->
-                <div class="p-6 flex-1 space-y-5">
+            <!-- Drawer Body -->
+            <div class="flex-1 overflow-y-auto p-4 space-y-4">
+                
+                <!-- TAB 1: EJECUCIÓN & ROLES -->
+                <div id="tab-content-exec" class="space-y-4">
                     
-                    <!-- Roles Banner -->
-                    <div class="grid grid-cols-2 gap-3 text-xs bg-slate-50 p-3 rounded-lg border border-slate-200">
-                        <div>
-                            <span class="text-slate-500">Rol Editor:</span>
-                            <div class="font-medium text-slate-800" id="group-editor">operaciones@democorp.com</div>
-                        </div>
-                        <div>
-                            <span class="text-slate-500">Rol Revisor:</span>
-                            <div class="font-medium text-slate-800" id="group-reviewer">supervisores@democorp.com</div>
-                        </div>
-                    </div>
-
                     <!-- Dynamic Input Schema Form -->
-                    <form id="dynamic-form" class="space-y-4">
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-700 mb-1">Fecha de Inicio de Vigencia (start_date)</label>
-                            <input type="date" id="field-start-date" value="2026-10-07" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    <div class="bg-[#141517] p-3.5 rounded-xl border border-[#2e3035] space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-slate-300">Formulario Dinámico (Input Schema)</span>
+                            <span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 font-mono">2 Campos</span>
                         </div>
 
                         <div>
-                            <label class="block text-xs font-semibold text-slate-700 mb-1">Días Hábiles de Plazo (business_days_to_add)</label>
-                            <input type="number" id="field-days" value="30" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            <label class="block text-[11px] font-semibold text-slate-400 mb-1">start_date (Fecha Inicio)</label>
+                            <input type="date" id="field-start-date" value="2026-10-07" class="w-full bg-[#1e1f23] border border-[#34373d] text-slate-100 px-3 py-1.5 rounded-lg text-xs focus:ring-1 focus:ring-[#ff6d5a] focus:outline-none">
                         </div>
 
-                        <!-- Microservice Preview Output -->
-                        <div class="p-3 bg-indigo-50/60 border border-indigo-100 rounded-lg">
-                            <div class="flex items-center justify-between mb-1">
-                                <span class="text-xs font-semibold text-indigo-900 flex items-center space-x-1">
-                                    <i data-lucide="zap" class="w-3.5 h-3.5 text-indigo-600"></i>
-                                    <span>Microservicio Asociado: SRV_DATE_CALCULATOR</span>
-                                </span>
-                                <button type="button" onclick="runServiceTest()" class="text-[11px] bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-2 py-0.5 rounded">
-                                    Ejecutar Cálculo
-                                </button>
-                            </div>
-                            <div class="text-xs text-indigo-800 font-mono" id="service-output">
-                                due_date: 2026-11-18 (30 días hábiles calculados)
-                            </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-400 mb-1">business_days_to_add (Días Hábiles)</label>
+                            <input type="number" id="field-days" value="30" class="w-full bg-[#1e1f23] border border-[#34373d] text-slate-100 px-3 py-1.5 rounded-lg text-xs focus:ring-1 focus:ring-[#ff6d5a] focus:outline-none">
                         </div>
-                    </form>
+                    </div>
 
-                    <!-- Reviewer Decision Panel (Visible in Reviewer Mode) -->
-                    <div id="reviewer-panel" class="hidden p-4 bg-amber-50 border border-amber-200 rounded-lg space-y-3">
-                        <h4 class="font-bold text-xs text-amber-900 flex items-center space-x-1.5">
-                            <i data-lucide="shield-check" class="w-4 h-4 text-amber-600"></i>
-                            <span>Panel de Decisión del Revisor</span>
-                        </h4>
-                        <textarea id="review-comments" placeholder="Ingrese comentarios u observaciones de revisión..." class="w-full text-xs p-2.5 border border-amber-300 rounded-lg focus:outline-none bg-white"></textarea>
-                        
-                        <div class="flex items-center space-x-3 pt-1">
-                            <button onclick="submitReview(true)" class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-sm flex items-center justify-center space-x-1.5">
-                                <i data-lucide="check" class="w-4 h-4"></i>
-                                <span>Aprobar y Pasar a Siguiente Fase</span>
+                    <!-- Microservice Output Card -->
+                    <div class="bg-[#1b2230] p-3.5 rounded-xl border border-indigo-500/40 space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-indigo-300 flex items-center space-x-1.5">
+                                <i data-lucide="cpu" class="w-3.5 h-3.5"></i>
+                                <span>SRV_DATE_CALCULATOR</span>
+                            </span>
+                            <button onclick="runMicroserviceCalc()" class="text-[10px] bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-2 py-1 rounded transition">
+                                Invocación Cloud Run
                             </button>
-                            <button onclick="submitReview(false)" class="flex-1 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold shadow-sm flex items-center justify-center space-x-1.5">
-                                <i data-lucide="x" class="w-4 h-4"></i>
-                                <span>Rechazar y Devolver a Editor</span>
+                        </div>
+                        <div class="text-[11px] font-mono bg-[#141517] p-2 rounded border border-indigo-900/50 text-indigo-200" id="microservice-preview">
+                            due_date: "2026-11-18" (30 días hábiles)
+                        </div>
+                    </div>
+
+                    <!-- Reviewer Action Box -->
+                    <div id="reviewer-box" class="hidden bg-[#24211a] p-3.5 rounded-xl border border-amber-500/40 space-y-3">
+                        <div class="flex items-center space-x-2 text-amber-400 font-bold text-xs">
+                            <i data-lucide="shield-check" class="w-4 h-4"></i>
+                            <span>Decisión del Revisor</span>
+                        </div>
+                        <textarea id="review-notes" placeholder="Observaciones de revisión..." class="w-full bg-[#1e1f23] border border-amber-500/30 text-xs p-2 rounded-lg text-slate-200 focus:outline-none h-16"></textarea>
+                        <div class="flex space-x-2">
+                            <button onclick="approveSubstage()" class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition flex items-center justify-center space-x-1">
+                                <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                                <span>Aprobar Fase</span>
+                            </button>
+                            <button onclick="rejectSubstage()" class="flex-1 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-bold transition flex items-center justify-center space-x-1">
+                                <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                                <span>Rechazar</span>
                             </button>
                         </div>
                     </div>
 
-                    <!-- Editor Submit Button (Visible in Editor Mode) -->
-                    <div id="editor-panel" class="pt-2">
-                        <button onclick="submitEditorData()" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-sm flex items-center justify-center space-x-2">
-                            <i data-lucide="send" class="w-4 h-4"></i>
-                            <span>Guardar y Enviar a Revisión</span>
+                    <!-- Editor Submit Button -->
+                    <div id="editor-box">
+                        <button onclick="submitToReviewer()" class="w-full py-2.5 bg-[#ff6d5a] hover:bg-[#ff5540] text-white rounded-xl text-xs font-bold shadow-lg shadow-[#ff6d5a]/20 flex items-center justify-center space-x-1.5 transition">
+                            <i data-lucide="send" class="w-3.5 h-3.5"></i>
+                            <span>Guardar y Enviar a Revisor</span>
                         </button>
                     </div>
 
                 </div>
-            </div>
 
-            <!-- Audit Trail & Timeline -->
-            <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
-                <h3 class="font-bold text-xs text-slate-800 mb-3 flex items-center space-x-2">
-                    <i data-lucide="history" class="w-4 h-4 text-slate-500"></i>
-                    <span>Línea de Tiempo y Auditoría (Historial Inmutable)</span>
-                </h3>
-                <div class="space-y-2 text-xs" id="audit-trail">
-                    <div class="flex items-start space-x-2 text-slate-600 border-l-2 border-emerald-500 pl-3 py-1">
-                        <span class="font-mono text-slate-400">10:14:02</span>
-                        <span><strong>APPROVED:</strong> Subetapa 1.1 aprobada por <em>supervisor@democorp.com</em></span>
+                <!-- TAB 2: ESQUEMAS JSON -->
+                <div id="tab-content-schema" class="hidden space-y-3">
+                    <div>
+                        <label class="block text-[11px] font-mono text-slate-400 mb-1">input_schema (JSON Schema)</label>
+                        <pre class="bg-[#141517] p-3 rounded-lg border border-[#2e3035] text-[11px] font-mono text-slate-300 overflow-x-auto">
+{
+  "type": "object",
+  "required": ["start_date", "business_days_to_add"],
+  "properties": {
+    "start_date": {"type": "string", "format": "date"},
+    "business_days_to_add": {"type": "integer"}
+  }
+}</pre>
                     </div>
-                    <div class="flex items-start space-x-2 text-slate-600 border-l-2 border-blue-500 pl-3 py-1">
-                        <span class="font-mono text-slate-400">10:12:30</span>
-                        <span><strong>SUBMITTED:</strong> Datos ingresados por <em>operador@democorp.com</em></span>
-                    </div>
-                    <div class="flex items-start space-x-2 text-slate-600 border-l-2 border-slate-300 pl-3 py-1">
-                        <span class="font-mono text-slate-400">10:00:00</span>
-                        <span><strong>WORKFLOW_STARTED:</strong> Instancia DEMOCORP-CONTRATOS-2026-00001 iniciada.</span>
+
+                    <div>
+                        <label class="block text-[11px] font-mono text-slate-400 mb-1">output_schema (Generado para la siguiente)</label>
+                        <pre class="bg-[#141517] p-3 rounded-lg border border-[#2e3035] text-[11px] font-mono text-emerald-400 overflow-x-auto">
+{
+  "type": "object",
+  "properties": {
+    "due_date": {"type": "string", "format": "date"},
+    "vigencia_aprobada": {"type": "boolean"}
+  }
+}</pre>
                     </div>
                 </div>
-            </div>
-        </section>
-    </main>
 
+                <!-- TAB 3: ROLES WORKSPACE -->
+                <div id="tab-content-roles" class="hidden space-y-3">
+                    <div class="bg-[#141517] p-3 rounded-lg border border-[#2e3035] space-y-2">
+                        <label class="block text-[11px] font-semibold text-slate-400">Grupo Editor (Google Workspace)</label>
+                        <input type="text" value="operaciones@democorp.com" class="w-full bg-[#1e1f23] border border-[#34373d] text-slate-200 px-3 py-1.5 rounded-lg text-xs font-mono">
+                    </div>
+                    <div class="bg-[#141517] p-3 rounded-lg border border-[#2e3035] space-y-2">
+                        <label class="block text-[11px] font-semibold text-slate-400">Grupo Revisor (Google Workspace)</label>
+                        <input type="text" value="supervisores@democorp.com" class="w-full bg-[#1e1f23] border border-[#34373d] text-slate-200 px-3 py-1.5 rounded-lg text-xs font-mono">
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Audit Trail in Drawer Footer -->
+            <div class="p-3 border-t border-[#2e3035] bg-[#141517] text-[11px] text-slate-400 flex items-center justify-between">
+                <span class="flex items-center space-x-1">
+                    <i data-lucide="history" class="w-3.5 h-3.5 text-slate-500"></i>
+                    <span>Iteración: <strong class="text-white">1</strong></span>
+                </span>
+                <span class="text-emerald-400 font-mono">Auditoría ACID</span>
+            </div>
+        </aside>
+
+    </div>
+
+    <!-- Scripts -->
     <script>
         lucide.createIcons();
 
-        let currentRole = 'editor';
+        let activeNode = 2;
+        let userRole = 'editor';
 
         function switchRole(role) {
-            currentRole = role;
+            userRole = role;
             const editorBtn = document.getElementById('role-btn-editor');
             const reviewerBtn = document.getElementById('role-btn-reviewer');
-            const editorPanel = document.getElementById('editor-panel');
-            const reviewerPanel = document.getElementById('reviewer-panel');
+            const editorBox = document.getElementById('editor-box');
+            const reviewerBox = document.getElementById('reviewer-box');
 
             if (role === 'editor') {
-                editorBtn.className = "px-2.5 py-1 rounded-md bg-blue-600 text-white font-medium shadow-sm";
-                reviewerBtn.className = "px-2.5 py-1 rounded-md text-slate-600 hover:bg-slate-200 font-medium";
-                editorPanel.classList.remove('hidden');
-                reviewerPanel.classList.add('hidden');
+                editorBtn.className = "px-2.5 py-1 rounded-md bg-[#ff6d5a] text-white font-medium shadow-sm transition";
+                reviewerBtn.className = "px-2.5 py-1 rounded-md text-slate-400 hover:text-slate-200 font-medium transition";
+                editorBox.classList.remove('hidden');
+                reviewerBox.classList.add('hidden');
             } else {
-                reviewerBtn.className = "px-2.5 py-1 rounded-md bg-amber-600 text-white font-medium shadow-sm";
-                editorBtn.className = "px-2.5 py-1 rounded-md text-slate-600 hover:bg-slate-200 font-medium";
-                editorPanel.classList.add('hidden');
-                reviewerPanel.classList.remove('hidden');
+                reviewerBtn.className = "px-2.5 py-1 rounded-md bg-amber-600 text-white font-medium shadow-sm transition";
+                editorBtn.className = "px-2.5 py-1 rounded-md text-slate-400 hover:text-slate-200 font-medium transition";
+                editorBox.classList.add('hidden');
+                reviewerBox.classList.remove('hidden');
             }
         }
 
-        function runServiceTest() {
+        function switchDrawerTab(tab) {
+            const tabs = ['exec', 'schema', 'roles'];
+            tabs.forEach(t => {
+                const btn = document.getElementById(`tab-btn-${t}`);
+                const content = document.getElementById(`tab-content-${t}`);
+                if (t === tab) {
+                    btn.className = "flex-1 py-2.5 text-center font-bold text-[#ff6d5a] border-b-2 border-[#ff6d5a]";
+                    content.classList.remove('hidden');
+                } else {
+                    btn.className = "flex-1 py-2.5 text-center font-medium text-slate-400 hover:text-slate-200";
+                    content.classList.add('hidden');
+                }
+            });
+        }
+
+        function openNodeDrawer(nodeId) {
+            activeNode = nodeId;
+            document.querySelectorAll('.n8n-node').forEach(el => el.classList.remove('selected'));
+            const current = document.getElementById(`node-${nodeId}`);
+            if (current) current.classList.add('selected');
+
+            if (nodeId === 1) {
+                document.getElementById('drawer-title').innerText = "Etapa 1.1: Recepción Proveedor";
+                document.getElementById('drawer-code').innerText = "SUB_DATOS_PROVEEDOR";
+            } else if (nodeId === 2) {
+                document.getElementById('drawer-title').innerText = "Subetapa 1.2: Cálculo de Plazos";
+                document.getElementById('drawer-code').innerText = "SUB_CALCULO_PLAZOS";
+            } else if (nodeId === 3) {
+                document.getElementById('drawer-title').innerText = "Etapa 2.1: Emisión Documento PDF";
+                document.getElementById('drawer-code').innerText = "SUB_DOC_GENERATOR";
+            } else if (nodeId === 4) {
+                document.getElementById('drawer-title').innerText = "Fábrica: OCR PDF Extractor";
+                document.getElementById('drawer-code').innerText = "SRV_PDF_READER";
+            }
+        }
+
+        function runMicroserviceCalc() {
             const startDate = document.getElementById('field-start-date').value;
             const days = parseInt(document.getElementById('field-days').value) || 30;
-            
-            // Simular invocación al microservicio
             const d = new Date(startDate);
             d.setDate(d.getDate() + Math.round(days * 1.4));
             const calculated = d.toISOString().split('T')[0];
             
-            document.getElementById('service-output').innerText = `due_date: ${calculated} (${days} días hábiles calculados exitosamente)`;
+            document.getElementById('microservice-preview').innerText = `due_date: "${calculated}" (${days} días calculados vía Cloud Run)`;
         }
 
-        function submitEditorData() {
-            alert("✅ Datos guardados y validados contra el input_schema. Estado actualizado a: EN REVISIÓN.");
+        function submitToReviewer() {
+            alert("✅ Formulario enviado con éxito. Estado actualizado a: EN REVISIÓN por supervisores@democorp.com.");
             switchRole('reviewer');
         }
 
-        function submitReview(approved) {
-            if (approved) {
-                alert("🎉 Subetapa APROBADA. Se emite output_schema y el motor avanza a la Etapa 2 (Generación de PDF).");
-            } else {
-                alert("⚠️ Subetapa RECHAZADA. El flujo vuelve al Editor con los comentarios registrados.");
-                switchRole('editor');
-            }
+        function approveSubstage() {
+            alert("🎉 Subetapa APROBADA. El motor de workflows avanza hacia la Etapa 2 (Emisión PDF).");
+            openNodeDrawer(3);
+        }
+
+        function rejectSubstage() {
+            alert("⚠️ Subetapa RECHAZADA. El flujo retorna al Editor con las observaciones.");
+            switchRole('editor');
         }
 
         function triggerRollback() {
-            const confirmRollback = confirm("¿Desea retroceder a la subetapa previa? Se creará una nueva iteración conservando la auditoría.");
+            if (activeNode === 1) {
+                alert("❌ No es posible retroceder: La etapa 1.1 es el nodo inicial del workflow.");
+                return;
+            }
+            const confirmRollback = confirm("¿Desea retroceder a la subetapa previa? Se creará una nueva iteración conservando la auditoría inmutable.");
             if (confirmRollback) {
-                alert("⏪ Retroceso ejecutado: Subetapa actual cambiada a 1.1 'Datos del Proveedor' (Iteración 2).");
+                alert("⏪ Retroceso ejecutado: Subetapa activa cambiada a 1.1 (Iteración 2).");
+                openNodeDrawer(1);
             }
         }
 
-        function cloneSubstageModal() {
-            const newTitle = prompt("Ingrese el nombre de la nueva subetapa clonada:", "1.3 Validación Financiera (Copia de 1.1)");
-            if (newTitle) {
-                alert(`📋 Subetapa clonada exitosamente como '${newTitle}'. Esquemas y roles replicados.`);
+        function cloneSubstageAction() {
+            const name = prompt("Nombre para la nueva subetapa clonada:", "1.3 Validación Tributaria (Copia de 1.2)");
+            if (name) {
+                alert(`📋 Subetapa '${name}' clonada exitosamente en el catálogo del workflow.`);
             }
+        }
+
+        function addNodeModal() {
+            alert("➕ Seleccione del Catálogo: [Lector OCR de PDFs, Calculador de Fechas, Generador de Documentos, Formulario Dinámico]");
         }
     </script>
 </body>
