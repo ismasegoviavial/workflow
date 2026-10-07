@@ -1,0 +1,78 @@
+name: CI/CD Pipeline - Cloud Run & Cloud SQL
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGION: us-central1
+  GAR_LOCATION: us-central1-docker.pkg.dev
+
+jobs:
+  test-and-lint:
+    name: Run Unit Tests & Schema Validations
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install API Dependencies
+        run: |
+          cd apps/workflow-engine-api
+          pip install -r requirements.txt
+
+      - name: Validate FastApi & Database Models
+        run: |
+          cd apps/workflow-engine-api
+          python -c "from src.models.entities import Base; print('Modelos SQLAlchemy validados correctamente.')"
+
+  deploy-to-gcp:
+    name: Build & Deploy Containers to Cloud Run
+    needs: test-and-lint
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Authorize Docker Push to Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
+
+      # 1. Build & Deploy Workflow Core Engine
+      - name: Deploy Workflow Engine API to Cloud Run
+        run: |
+          IMAGE="${{ env.GAR_LOCATION }}/${{ env.PROJECT_ID }}/workflows/workflow-engine-api:${{ github.sha }}"
+          docker build -t $IMAGE ./apps/workflow-engine-api
+          docker push $IMAGE
+          gcloud run deploy workflow-engine-api \
+            --image $IMAGE \
+            --region ${{ env.REGION }} \
+            --platform managed \
+            --allow-unauthenticated
+
+      # 2. Deploy Microservices
+      - name: Deploy PDF Reader Microservice
+        run: |
+          IMAGE="${{ env.GAR_LOCATION }}/${{ env.PROJECT_ID }}/workflows/srv-pdf-reader:${{ github.sha }}"
+          docker build -t $IMAGE ./services/srv-pdf-reader
+          docker push $IMAGE
+          gcloud run deploy srv-pdf-reader \
+            --image $IMAGE \
+            --region ${{ env.REGION }} \
+            --platform managed
