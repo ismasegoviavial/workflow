@@ -11,7 +11,72 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Inicialización del Estado de la Aplicación (Session State)
+# ==============================================================================
+# UTILIDADES DE FORMATEO Y MÁSCARAS
+# ==============================================================================
+def format_chilean_rut(rut_str: str) -> str:
+    """
+    Normaliza y formatea un RUT chileno al estándar 12345678-K.
+    Si se ingresa '178377345', lo convierte a '17837734-5'.
+    Si se ingresa '17.837.734-5', lo limpia a '17837734-5'.
+    """
+    if not rut_str:
+        return ""
+    cleaned = str(rut_str).strip().replace(".", "").replace("-", "").replace(" ", "").upper()
+    if len(cleaned) < 2:
+        return cleaned
+    body = cleaned[:-1]
+    dv = cleaned[-1]
+    return f"{body}-{dv}"
+
+def validate_chilean_rut(rut_str: str) -> tuple[bool, str]:
+    """
+    Valida el dígito verificador del RUT chileno según módulo 11.
+    Retorna (es_valido, mensaje)
+    """
+    if not rut_str:
+        return True, ""
+    cleaned = str(rut_str).strip().replace(".", "").replace("-", "").replace(" ", "").upper()
+    if len(cleaned) < 2:
+        return False, "RUT demasiado corto."
+    body = cleaned[:-1]
+    dv = cleaned[-1]
+    if not body.isdigit():
+        return False, "El cuerpo del RUT debe contener solo números."
+    
+    total = 0
+    factor = 2
+    for digit in reversed(body):
+        total += int(digit) * factor
+        factor = 9 if factor == 7 else factor + 1
+    expected_dv_num = 11 - (total % 11)
+    if expected_dv_num == 11:
+        expected_dv = '0'
+    elif expected_dv_num == 10:
+        expected_dv = 'K'
+    else:
+        expected_dv = str(expected_dv_num)
+    
+    if dv != expected_dv:
+        return False, f"Dígito verificador inválido. Se calculó '{expected_dv}' pero se ingresó '{dv}'."
+    return True, "RUT Válido"
+
+def format_phone_number(phone_str: str) -> str:
+    """
+    Formatea un teléfono móvil al estándar +56 9 XXXX XXXX
+    """
+    if not phone_str:
+        return ""
+    cleaned = "".join([c for c in str(phone_str) if c.isdigit()])
+    if cleaned.startswith("56"):
+        cleaned = cleaned[2:]
+    if len(cleaned) == 9 and cleaned.startswith("9"):
+        return f"+56 9 {cleaned[1:5]} {cleaned[5:]}"
+    return phone_str
+
+# ==============================================================================
+# INICIALIZACIÓN DEL ESTADO DE LA APLICACIÓN (Session State)
+# ==============================================================================
 if "workflow" not in st.session_state:
     st.session_state.workflow = {
         "id": "wf-custom-01",
@@ -99,6 +164,7 @@ mode = st.sidebar.radio(
 )
 
 st.sidebar.divider()
+st.sidebar.markdown(f"📦 **Microservicios en Catálogo:** `{len(st.session_state.microservices)}`")
 if st.sidebar.button("🗑️ Vaciar / Reiniciar Todo"):
     st.session_state.workflow["stages"] = []
     st.session_state.execution = {
@@ -118,7 +184,7 @@ if st.sidebar.button("🗑️ Vaciar / Reiniciar Todo"):
 # ==============================================================================
 if mode == "🛠️ Diseñador de Workflows":
     st.markdown('<div class="main-header">🛠️ Diseñador de Workflows y Subetapas</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Crea y estructura las etapas, agrega subetapas, define sus campos dinámicos y asigna roles de Google Workspace.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Crea y estructura las etapas, agrega subetapas, define sus campos dinámicos con formato/máscaras y asigna roles de Google Workspace.</div>', unsafe_allow_html=True)
 
     col_name, col_code = st.columns([3, 1])
     with col_name:
@@ -193,6 +259,7 @@ if mode == "🛠️ Diseñador de Workflows":
                                         stage["substages"].append(cloned_sub)
                                         st.success(f"Subetapa clonada.")
                                         st.rerun()
+                                pleasantly = False
                                 with col_c2:
                                     if st.button("🗑️ Borrar", key=f"del_sub_{substage['id']}"):
                                         stage["substages"].pop(sub_idx)
@@ -234,14 +301,15 @@ if mode == "🛠️ Diseñador de Workflows":
                             # Mostrar tabla de campos existentes
                             if len(substage["fields"]) > 0:
                                 for f_idx, field in enumerate(substage["fields"]):
-                                    col_f_name, col_f_title, col_f_type, col_f_req, col_f_del = st.columns([2, 2, 1.5, 1, 0.5])
+                                    col_f_name, col_f_title, col_f_type, col_f_req, col_f_del = st.columns([2, 2, 2.5, 1, 0.5])
                                     with col_f_name:
                                         st.code(field["name"])
                                     with col_f_title:
                                         st.write(f"**{field['title']}**")
                                     with col_f_type:
-                                        st.badge = field["type"]
-                                        st.caption(f"Tipo: `{field['type']}`")
+                                        fmt_info = f" ({field.get('format', 'libre')})" if field.get('format') and field.get('format') != 'none' else ""
+                                        mask_info = f" | `{field.get('placeholder')}`" if field.get('placeholder') else ""
+                                        st.caption(f"Tipo: `{field['type']}`{fmt_info}{mask_info}")
                                     with col_f_req:
                                         st.write("Obligatorio" if field["required"] else "Opcional")
                                     with col_f_del:
@@ -254,37 +322,77 @@ if mode == "🛠️ Diseñador de Workflows":
                             # Formulario para Agregar Campo
                             with st.form(f"form_add_field_{substage['id']}", clear_on_submit=True):
                                 st.markdown("**+ Agregar Nuevo Campo:**")
-                                col_cf1, col_cf2, col_cf3, col_cf4 = st.columns([2, 2, 1.5, 1])
+                                col_cf1, col_cf2 = st.columns([2, 2])
                                 with col_cf1:
-                                    f_title = st.text_input("Título / Etiqueta:", placeholder="Ej: RUT del Proveedor", key=f"ft_{substage['id']}")
+                                    f_title = st.text_input("Título / Etiqueta del Campo:", placeholder="Ej: RUT del Proveedor", key=f"ft_{substage['id']}")
                                 with col_cf2:
                                     f_name = st.text_input("Nombre Técnico (JSON Key):", placeholder="Ej: rut_proveedor", key=f"fn_{substage['id']}")
+                                
+                                col_cf3, col_cf4, col_cf5 = st.columns([1.5, 2.5, 1])
                                 with col_cf3:
-                                    f_type = st.selectbox("Tipo de Dato:", ["Texto", "Número", "Fecha", "Booleano", "Archivo / PDF"], key=f"fty_{substage['id']}")
+                                    f_type = st.selectbox("Tipo de Dato:", ["Texto (String)", "Número", "Fecha", "Booleano", "Archivo / PDF"], key=f"fty_{substage['id']}")
                                 with col_cf4:
+                                    f_format = st.selectbox(
+                                        "Formato / Máscara (para Texto):",
+                                        [
+                                            "Texto Libre (Sin formato)",
+                                            "RUT Chileno (17837734-5 | _ _ _ _ _ _ _ _ - _)",
+                                            "Teléfono (+56 9 _ _ _ _  _ _ _ _)",
+                                            "Correo Electrónico (usuario@dominio.com)",
+                                            "Máscara Personalizada"
+                                        ],
+                                        key=f"ffmt_{substage['id']}"
+                                    )
+                                with col_cf5:
                                     st.write("")
                                     st.write("")
                                     f_req = st.checkbox("Obligatorio", value=True, key=f"fr_{substage['id']}")
+
+                                # Máscara / Placeholder personalizado
+                                col_mask1, col_mask2 = st.columns(2)
+                                with col_mask1:
+                                    f_placeholder_input = st.text_input("Placeholder / Guía visual (ej: _ _ _ _ _ _ _ _ - _):", placeholder="Ej: _ _ _ _ _ _ _ _ - _", key=f"fph_{substage['id']}")
+                                with col_mask2:
+                                    f_mask_regex = st.text_input("Patrón / Regex personalizado (opcional):", placeholder="Ej: ^[0-9]{7,8}-[0-9kK]$", key=f"fmsk_{substage['id']}")
 
                                 submit_field = st.form_submit_button("+ Guardar Campo", type="secondary")
                                 if submit_field:
                                     if f_title:
                                         type_mapping = {
-                                            "Texto": "string",
+                                            "Texto (String)": "string",
                                             "Número": "number",
                                             "Fecha": "date",
                                             "Booleano": "boolean",
                                             "Archivo / PDF": "file"
                                         }
+                                        
+                                        format_code = "none"
+                                        default_ph = ""
+                                        if "RUT Chileno" in f_format:
+                                            format_code = "rut"
+                                            default_ph = "_ _ _ _ _ _ _ _ - _"
+                                        elif "Teléfono" in f_format:
+                                            format_code = "phone"
+                                            default_ph = "+56 9 _ _ _ _  _ _ _ _"
+                                        elif "Correo" in f_format:
+                                            format_code = "email"
+                                            default_ph = "nombre@empresa.com"
+                                        elif "Personalizada" in f_format:
+                                            format_code = "custom"
+                                            default_ph = f_placeholder_input or "_ _ _ _ _ _ _ _ - _"
+
                                         new_field = {
                                             "id": str(uuid.uuid4()),
                                             "title": f_title,
                                             "name": f_name if f_name else f_title.lower().replace(" ", "_"),
                                             "type": type_mapping[f_type],
+                                            "format": format_code,
+                                            "placeholder": f_placeholder_input if f_placeholder_input else default_ph,
+                                            "mask_pattern": f_mask_regex,
                                             "required": f_req
                                         }
                                         substage["fields"].append(new_field)
-                                        st.success(f"Campo '{f_title}' agregado.")
+                                        st.success(f"Campo '{f_title}' agregado con formato '{format_code}'.")
                                         st.rerun()
                                     else:
                                         st.error("Debes ingresar la etiqueta del campo.")
@@ -420,9 +528,26 @@ elif mode == "🚀 Portal de Ejecución (Runtime)":
                         prev_val = exec_state["form_data"].get(field["name"], None)
 
                         if field["type"] == "string":
+                            fmt = field.get("format", "none")
+                            ph = field.get("placeholder") or ""
+                            help_msg = None
+                            if fmt == "rut":
+                                ph = ph or "_ _ _ _ _ _ _ _ - _"
+                                help_msg = "Formato esperado: 17837734-5. Si ingresas 178377345 se formateará automáticamente con guión."
+                            elif fmt == "phone":
+                                ph = ph or "+56 9 _ _ _ _  _ _ _ _"
+                                help_msg = "Formato telefónico: +56 9 XXXX XXXX"
+                            elif fmt == "email":
+                                ph = ph or "usuario@dominio.com"
+                            elif fmt == "custom":
+                                ph = ph or "_ _ _ _ _ _ _ _ - _"
+                                help_msg = f"Máscara / Patrón: {field.get('mask_pattern', '')}"
+
                             form_inputs[field["name"]] = st.text_input(
                                 f"{field['title']} {'*' if field['required'] else ''}",
                                 value=prev_val or "",
+                                placeholder=ph,
+                                help=help_msg,
                                 disabled=not is_editor_mode
                             )
                         elif field["type"] == "number":
@@ -455,15 +580,35 @@ elif mode == "🚀 Portal de Ejecución (Runtime)":
                     if is_editor_mode:
                         submit_data = st.form_submit_button("💾 Guardar y Enviar a Revisión", type="primary")
                         if submit_data:
+                            # Formateo automático de strings (ej: RUT)
+                            validation_errors = []
+                            for field in current_sub["fields"]:
+                                fname = field["name"]
+                                val = form_inputs.get(fname, "")
+                                if field["type"] == "string" and isinstance(val, str) and val.strip():
+                                    fmt = field.get("format", "none")
+                                    if fmt == "rut":
+                                        formatted_rut = format_chilean_rut(val)
+                                        form_inputs[fname] = formatted_rut
+                                        is_valid, msg = validate_chilean_rut(formatted_rut)
+                                        if not is_valid and field.get("required"):
+                                            validation_errors.append(f"RUT '{formatted_rut}' para '{field['title']}': {msg}")
+                                    elif fmt == "phone":
+                                        form_inputs[fname] = format_phone_number(val)
+
+                            if validation_errors:
+                                for err in validation_errors:
+                                    st.warning(f"⚠️ {err}")
+
                             exec_state["form_data"].update(form_inputs)
                             exec_state["status"] = "IN_REVIEW"
                             exec_state["audit_logs"].append({
                                 "timestamp": datetime.now().strftime("%H:%M:%S"),
                                 "action": "SUBMITTED_FOR_REVIEW",
                                 "user": current_sub["editor_role"] or "editor@miempresa.com",
-                                "notes": f"Datos ingresados: {json.dumps(form_inputs)}"
+                                "notes": f"Datos ingresados: {json.dumps(form_inputs, ensure_ascii=False)}"
                             })
-                            st.success("✅ Formulario enviado con éxito. Estado actualizado a: **EN REVISIÓN**.")
+                            st.success("✅ Formulario enviado con éxito. Valores formateados correctamente (ej: RUT con guión). Estado: **EN REVISIÓN**.")
                             st.rerun()
 
             # Panel de Decisión del Revisor
@@ -573,7 +718,7 @@ elif mode == "🤖 Generador de APIs con IA":
                 out_schema = {
                     "type": "object",
                     "properties": {
-                        "rut_emisor": {"type": "string", "title": "RUT Emisor"},
+                        "rut_emisor": {"type": "string", "title": "RUT Emisor", "pattern": "^[0-9]{7,8}-[0-9kK]$", "example": "76452190-K"},
                         "monto_neto": {"type": "number", "title": "Monto Neto"},
                         "iva": {"type": "number", "title": "IVA (19%)"},
                         "monto_total": {"type": "number", "title": "Total Factura"},
@@ -587,7 +732,7 @@ elif mode == "🤖 Generador de APIs con IA":
                     "type": "object",
                     "required": ["rut", "ingresos_mensuales", "monto_solicitado"],
                     "properties": {
-                        "rut": {"type": "string", "title": "RUT Cliente"},
+                        "rut": {"type": "string", "title": "RUT Cliente", "pattern": "^[0-9]{7,8}-[0-9kK]$", "example": "17837734-5"},
                         "ingresos_mensuales": {"type": "number", "title": "Ingresos Mensuales (CLP)"},
                         "monto_solicitado": {"type": "number", "title": "Monto de Crédito Solicitado"}
                     }
@@ -665,7 +810,7 @@ def process_data(req: RequestPayload):
                 elif val.get("format") == "date":
                     default_val = 'datetime.now().strftime("%Y-%m-%d")'
                 else:
-                    default_val = '"76.452.190-K"' if "rut" in prop else '"Procesado con éxito"'
+                    default_val = '"17.837.734-5"' if "rut" in prop else '"Procesado con éxito"'
                 code_template += f'        {prop}={default_val},\n'
 
             code_template += f'''    )
@@ -688,6 +833,22 @@ def health():
     if st.session_state.ai_generated_api:
         api_data = st.session_state.ai_generated_api
         st.success(f"🎉 **Microservicio Diseñado:** `{api_data['name']}` `[{api_data['key']}]`")
+
+        # Botón Rápido de Registro Directo
+        col_quick1, col_quick2 = st.columns([3, 1])
+        with col_quick1:
+            st.info(f"🔗 **URL Sugerida:** `{api_data['url']}`")
+        with col_quick2:
+            if st.button("➕ Guardar en Catálogo Ahora", type="primary", key="btn_quick_save_cat"):
+                existing_keys = [s["key"] for s in st.session_state.microservices]
+                if api_data["key"] not in existing_keys:
+                    st.session_state.microservices.append({
+                        "key": api_data["key"],
+                        "name": api_data["name"],
+                        "url": api_data["url"]
+                    })
+                st.success(f"✅ ¡Guardado en el catálogo!")
+                st.rerun()
 
         tab_schemas, tab_code, tab_save = st.tabs(["📋 Esquemas JSON (Input/Output)", "🐍 Código Python FastAPI", "🚀 Registrar en Catálogo"])
 
@@ -714,8 +875,7 @@ def health():
             with col_reg2:
                 st.write("")
                 st.write("")
-                if st.button("➕ Guardar en Catálogo", type="primary"):
-                    # Evitar duplicados
+                if st.button("➕ Guardar en Catálogo", type="primary", key="btn_tab_save_cat"):
                     existing_keys = [s["key"] for s in st.session_state.microservices]
                     if api_data["key"] not in existing_keys:
                         st.session_state.microservices.append({
@@ -724,40 +884,50 @@ def health():
                             "url": api_data["url"]
                         })
                     st.success(f"✅ ¡Microservicio '{api_data['name']}' registrado en el catálogo!")
-                    st.balloons()
+                    st.rerun()
 
 # ==============================================================================
 # VISTA 4: CATÁLOGO DE MICROSERVICIOS
 # ==============================================================================
 elif mode == "🔌 Catálogo de Microservicios":
     st.markdown('<div class="main-header">🔌 Catálogo y Fábrica de Microservicios</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Gestiona los microservicios disponibles en Cloud Run para asociarlos a cualquier subetapa.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Gestiona y registra microservicios en Cloud Run para asociarlos a cualquier subetapa del workflow.</div>', unsafe_allow_html=True)
 
-    with st.expander("➕ **Registrar Nuevo Microservicio Manualmente**", expanded=False):
-        with st.form("form_new_service", clear_on_submit=True):
-            col_srv1, col_srv2 = st.columns([2, 1])
-            with col_srv1:
-                srv_name = st.text_input("Nombre del Servicio:", placeholder="Ej: Validador de Scoring Crediticio")
-            with col_srv2:
-                srv_key = st.text_input("Clave Única (Key):", placeholder="Ej: SRV_SCORING_API")
-            
-            srv_url = st.text_input("Endpoint URL (Cloud Run):", placeholder="https://srv-scoring-xyz.a.run.app/api/v1/score")
-            
-            submit_srv = st.form_submit_button("+ Registrar en Catálogo", type="primary")
-            if submit_srv:
-                if srv_name and srv_key:
-                    st.session_state.microservices.append({
-                        "key": srv_key.upper(),
-                        "name": srv_name,
-                        "url": srv_url
-                    })
-                    st.success(f"Microservicio '{srv_name}' registrado exitosamente.")
-                    st.rerun()
-                else:
-                    st.error("Debes completar el nombre y la clave del servicio.")
+    # Formulario visible y directo para registrar nuevo microservicio
+    st.markdown("### ➕ Registrar Nuevo Microservicio")
+    with st.form("form_new_service_direct", clear_on_submit=True):
+        col_srv1, col_srv2 = st.columns([2, 1])
+        with col_srv1:
+            srv_name = st.text_input("Nombre del Servicio:", placeholder="Ej: Validador de Scoring Crediticio")
+        with col_srv2:
+            srv_key = st.text_input("Clave Única (Key):", placeholder="Ej: SRV_SCORING_API")
+        
+        srv_url = st.text_input("Endpoint URL (Cloud Run o externa):", placeholder="https://srv-scoring-xyz.a.run.app/api/v1/score")
+        
+        submit_srv = st.form_submit_button("➕ Registrar Microservicio en el Catálogo", type="primary")
+        if submit_srv:
+            if srv_name and srv_key:
+                st.session_state.microservices.append({
+                    "key": srv_key.upper().strip(),
+                    "name": srv_name.strip(),
+                    "url": srv_url.strip() if srv_url else "https://mi-servicio.a.run.app/api/v1/process"
+                })
+                st.success(f"✅ Microservicio '{srv_name}' registrado exitosamente en el catálogo.")
+                st.rerun()
+            else:
+                st.error("Debes completar al menos el Nombre y la Clave Única del servicio.")
 
-    st.markdown("#### 📦 Microservicios Registrados en el Sistema:")
-    for s in st.session_state.microservices:
+    st.markdown("---")
+    st.markdown(f"### 📦 Microservicios Disponibles ({len(st.session_state.microservices)} Registrados)")
+    
+    for idx, s in enumerate(st.session_state.microservices):
         with st.container():
-            st.markdown(f"- ⚡ **{s['name']}** `[{s['key']}]` ➔ `{s['url']}`")
-
+            col_m1, col_m2 = st.columns([5, 1])
+            with col_m1:
+                st.markdown(f"**⚡ {s['name']}** `[{s['key']}]`")
+                st.caption(f"Endpoint: `{s['url']}`")
+            with col_m2:
+                if st.button("🗑️ Eliminar", key=f"del_ms_{idx}"):
+                    st.session_state.microservices.pop(idx)
+                    st.rerun()
+            st.divider()
