@@ -223,16 +223,71 @@ if mode == "🛠️ Diseñador de Workflows":
     if len(st.session_state.workflow["stages"]) == 0:
         st.info("🎨 El workflow está vacío. Haz clic arriba en **'+ Crear Nueva Etapa'** para comenzar.")
     else:
-        st.markdown(f"#### 📋 Estructura del Flujo ({len(st.session_state.workflow['stages'])} Etapas configuradas)")
+        # Esquema Visual de Arquitectura (Estilo Archify / DAG Pipeline)
+        with st.expander("📐 **Esquema de Arquitectura del Flujo (Estilo Archify / Pipeline Secuencial)**", expanded=True):
+            st.caption("Diagrama arquitectónico interactivo de las etapas secuenciales, subetapas, microservicios y roles:")
+            
+            flow_cols = st.columns(len(st.session_state.workflow["stages"]) + 2)
+            
+            with flow_cols[0]:
+                st.markdown("""
+                <div style="background:#e0f2fe; border:2px solid #0284c7; border-radius:10px; padding:10px; text-align:center; margin-top:5px;">
+                    <div style="font-size:16px;">🏁</div>
+                    <strong style="color:#0369a1; font-size:12px;">INICIO</strong>
+                    <div style="font-size:10px; color:#64748b;">Disparo Flujo</div>
+                </div>
+                """, unsafe_allow_html=True)
+                st.markdown("<div style='text-align:center; font-size:18px; color:#94a3b8; margin-top:2px;'>➔</div>", unsafe_allow_html=True)
+
+            for s_idx, stg in enumerate(st.session_state.workflow["stages"]):
+                with flow_cols[s_idx + 1]:
+                    sub_count = len(stg["substages"])
+                    srv_count = sum(1 for sub in stg["substages"] if sub.get("service_key"))
+                    
+                    st.markdown(f"""
+                    <div style="background:#ffffff; border:2px solid #3b82f6; border-radius:10px; padding:10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-top:5px;">
+                        <div style="font-size:10px; font-weight:bold; color:#2563eb;">ETAPA {s_idx + 1}</div>
+                        <div style="font-weight:700; font-size:12px; color:#1e293b; margin:2px 0;">{stg['title']}</div>
+                        <div style="font-size:10px; color:#64748b;">🔹 {sub_count} Subetapa{'s' if sub_count != 1 else ''}</div>
+                        <div style="font-size:10px; color:#059669;">⚡ {srv_count} Servicio{'s' if srv_count != 1 else ''}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    if s_idx < len(st.session_state.workflow["stages"]) - 1:
+                        st.markdown("<div style='text-align:center; font-size:18px; color:#94a3b8; margin-top:2px;'>➔</div>", unsafe_allow_html=True)
+
+            with flow_cols[-1]:
+                st.markdown("""
+                <div style="background:#dcfce7; border:2px solid #16a34a; border-radius:10px; padding:10px; text-align:center; margin-top:5px;">
+                    <div style="font-size:16px;">🎯</div>
+                    <strong style="color:#15803d; font-size:12px;">FIN</strong>
+                    <div style="font-size:10px; color:#64748b;">Completado</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+        st.markdown(f"#### 📋 Configuración y Orden Secuencial ({len(st.session_state.workflow['stages'])} Etapas)")
         
         for s_idx, stage in enumerate(st.session_state.workflow["stages"]):
             with st.container():
                 st.markdown(f"---")
-                col_st_title, col_st_del = st.columns([5, 1])
+                col_st_title, col_st_up, col_st_down, col_st_del = st.columns([4, 0.7, 0.7, 1])
                 with col_st_title:
                     st.markdown(f"### 🏷️ Etapa {s_idx + 1}: **{stage['title']}** `[{stage['key']}]`")
+                with col_st_up:
+                    if st.button("🔼 Subir", key=f"up_stage_{stage['id']}", disabled=(s_idx == 0)):
+                        st.session_state.workflow["stages"][s_idx], st.session_state.workflow["stages"][s_idx - 1] = (
+                            st.session_state.workflow["stages"][s_idx - 1],
+                            st.session_state.workflow["stages"][s_idx]
+                        )
+                        st.rerun()
+                with col_st_down:
+                    if st.button("🔽 Bajar", key=f"down_stage_{stage['id']}", disabled=(s_idx == len(st.session_state.workflow["stages"]) - 1)):
+                        st.session_state.workflow["stages"][s_idx], st.session_state.workflow["stages"][s_idx + 1] = (
+                            st.session_state.workflow["stages"][s_idx + 1],
+                            st.session_state.workflow["stages"][s_idx]
+                        )
+                        st.rerun()
                 with col_st_del:
-                    if st.button(f"🗑️ Eliminar Etapa", key=f"del_stage_{stage['id']}"):
+                    if st.button(f"🗑️ Eliminar", key=f"del_stage_{stage['id']}"):
                         st.session_state.workflow["stages"].pop(s_idx)
                         st.rerun()
 
@@ -242,16 +297,30 @@ if mode == "🛠️ Diseñador de Workflows":
                 else:
                     for sub_idx, substage in enumerate(stage["substages"]):
                         with st.expander(f"🔹 **Subetapa {s_idx + 1}.{sub_idx + 1}: {substage['title']}** `[{substage['key']}]` — ({len(substage['fields'])} campos)", expanded=True):
-                            col_sub_info, col_sub_actions = st.columns([3, 1])
+                            col_sub_info, col_sub_actions = st.columns([3, 1.8])
                             
                             with col_sub_info:
                                 st.write(f"**Rol Editor:** `{substage['editor_role'] or 'No asignado'}` | **Rol Revisor:** `{substage['reviewer_role'] or 'No asignado'}`")
                                 st.write(f"**Servicio:** `{substage['service_key'] or 'Manual (Formulario)'}`")
 
                             with col_sub_actions:
-                                col_c1, col_c2 = st.columns(2)
+                                col_c1, col_c2, col_c3, col_c4 = st.columns(4)
                                 with col_c1:
-                                    if st.button("📋 Clonar", key=f"clone_sub_{substage['id']}"):
+                                    if st.button("⬆️", key=f"up_sub_{substage['id']}", help="Subir orden de subetapa", disabled=(sub_idx == 0)):
+                                        stage["substages"][sub_idx], stage["substages"][sub_idx - 1] = (
+                                            stage["substages"][sub_idx - 1],
+                                            stage["substages"][sub_idx]
+                                        )
+                                        st.rerun()
+                                with col_c2:
+                                    if st.button("⬇️", key=f"down_sub_{substage['id']}", help="Bajar orden de subetapa", disabled=(sub_idx == len(stage["substages"]) - 1)):
+                                        stage["substages"][sub_idx], stage["substages"][sub_idx + 1] = (
+                                            stage["substages"][sub_idx + 1],
+                                            stage["substages"][sub_idx]
+                                        )
+                                        st.rerun()
+                                with col_c3:
+                                    if st.button("📋", key=f"clone_sub_{substage['id']}", help="Clonar subetapa"):
                                         cloned_sub = json.loads(json.dumps(substage))
                                         cloned_sub["id"] = str(uuid.uuid4())
                                         cloned_sub["title"] = f"{substage['title']} (Copia)"
@@ -259,9 +328,8 @@ if mode == "🛠️ Diseñador de Workflows":
                                         stage["substages"].append(cloned_sub)
                                         st.success(f"Subetapa clonada.")
                                         st.rerun()
-                                pleasantly = False
-                                with col_c2:
-                                    if st.button("🗑️ Borrar", key=f"del_sub_{substage['id']}"):
+                                with col_c4:
+                                    if st.button("🗑️", key=f"del_sub_{substage['id']}", help="Borrar subetapa"):
                                         stage["substages"].pop(sub_idx)
                                         st.rerun()
 
