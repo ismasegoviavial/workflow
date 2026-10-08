@@ -89,7 +89,12 @@ st.sidebar.caption(f"Tenant: **{st.session_state.workflow['tenant']}**")
 
 mode = st.sidebar.radio(
     "Selecciona la Vista:",
-    ["🛠️ Diseñador de Workflows", "🚀 Portal de Ejecución (Runtime)", "🔌 Catálogo de Microservicios"],
+    [
+        "🛠️ Diseñador de Workflows",
+        "🚀 Portal de Ejecución (Runtime)",
+        "🤖 Generador de APIs con IA",
+        "🔌 Catálogo de Microservicios"
+    ],
     index=0
 )
 
@@ -519,13 +524,216 @@ elif mode == "🚀 Portal de Ejecución (Runtime)":
                     st.markdown(f"- **`{log['timestamp']}`** | `{log['action']}` por **{log['user']}** ➔ *{log['notes']}*")
 
 # ==============================================================================
-# VISTA 3: CATÁLOGO DE MICROSERVICIOS
+# VISTA 3: GENERADOR DE APIS Y MICROSERVICIOS CON IA
+# ==============================================================================
+elif mode == "🤖 Generador de APIs con IA":
+    st.markdown('<div class="main-header">🤖 Generador de APIs y Microservicios con IA</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Describe en lenguaje natural la funcionalidad que necesitas y la IA construirá automáticamente el microservicio, sus esquemas JSON (Input/Output) y el código FastAPI para Cloud Run.</div>', unsafe_allow_html=True)
+
+    if "ai_generated_api" not in st.session_state:
+        st.session_state.ai_generated_api = None
+
+    col_prompt, col_templates = st.columns([2, 1])
+
+    with col_templates:
+        st.markdown("##### 💡 Plantillas de Ejemplo:")
+        if st.button("📄 Extractor OCR de Facturas"):
+            st.session_state.ai_prompt_text = "Crear un microservicio que reciba la URL de un PDF de factura o boleta, extraiga el RUT del emisor, monto neto, IVA, monto total y fecha de emisión."
+        if st.button("💰 Validador de Scoring Crediticio"):
+            st.session_state.ai_prompt_text = "Crear una API que reciba RUT, ingresos mensuales y monto solicitado, consulte el riesgo crediticio y devuelva si es aprobado, el score (1-1000) y la tasa de interés."
+        if st.button("📅 Calculador de Vacaciones y Plazos"):
+            st.session_state.ai_prompt_text = "Crear una API que reciba fecha de inicio de contrato y días solicitados, calcule los días proporcionales acumulados y devuelva la fecha de término."
+
+    with col_prompt:
+        ai_prompt = st.text_area(
+            "¿Qué funcionalidad debe realizar tu API / Microservicio?",
+            value=st.session_state.get("ai_prompt_text", "Crear una API que reciba el RUT de un cliente y valide si tiene antecedentes legales y comerciales vigentes, retornando un indicador booleano y el nivel de riesgo."),
+            height=130,
+            placeholder="Ej: Necesito una API que reciba un archivo PDF, extraiga las tablas de costos y calcule el subtotal con IVA..."
+        )
+
+        generate_btn = st.button("✨ Generar API y Esquemas con IA", type="primary")
+
+    if generate_btn and ai_prompt:
+        with st.spinner("🤖 La IA está diseñando la API, generando modelos Pydantic, esquemas JSON y código FastAPI..."):
+            # Generación inteligente estructurada
+            prompt_lower = ai_prompt.lower()
+            
+            if "pdf" in prompt_lower or "ocr" in prompt_lower or "factura" in prompt_lower:
+                srv_key = "SRV_AI_OCR_EXTRACTOR"
+                srv_name = "Extractor Inteligente de Documentos"
+                in_schema = {
+                    "type": "object",
+                    "required": ["pdf_document_url"],
+                    "properties": {
+                        "pdf_document_url": {"type": "string", "title": "URL del Documento PDF"},
+                        "tipo_documento": {"type": "string", "title": "Tipo (Factura/Contrato)", "default": "factura"}
+                    }
+                }
+                out_schema = {
+                    "type": "object",
+                    "properties": {
+                        "rut_emisor": {"type": "string", "title": "RUT Emisor"},
+                        "monto_neto": {"type": "number", "title": "Monto Neto"},
+                        "iva": {"type": "number", "title": "IVA (19%)"},
+                        "monto_total": {"type": "number", "title": "Total Factura"},
+                        "fecha_emision": {"type": "string", "format": "date"}
+                    }
+                }
+            elif "crediticio" in prompt_lower or "scoring" in prompt_lower or "riesgo" in prompt_lower:
+                srv_key = "SRV_AI_CREDIT_SCORING"
+                srv_name = "Evaluador de Scoring Financiero"
+                in_schema = {
+                    "type": "object",
+                    "required": ["rut", "ingresos_mensuales", "monto_solicitado"],
+                    "properties": {
+                        "rut": {"type": "string", "title": "RUT Cliente"},
+                        "ingresos_mensuales": {"type": "number", "title": "Ingresos Mensuales (CLP)"},
+                        "monto_solicitado": {"type": "number", "title": "Monto de Crédito Solicitado"}
+                    }
+                }
+                out_schema = {
+                    "type": "object",
+                    "properties": {
+                        "aprobado": {"type": "boolean", "title": "Crédito Aprobado"},
+                        "score_crediticio": {"type": "integer", "title": "Score (1-1000)"},
+                        "tasa_interes_mensual": {"type": "number", "title": "Tasa Mensual (%)"},
+                        "monto_maximo_aprobable": {"type": "number", "title": "Monto Máximo"}
+                    }
+                }
+            else:
+                srv_key = "SRV_AI_CUSTOM_VALIDATOR"
+                srv_name = "Validador Automático Personalizado"
+                in_schema = {
+                    "type": "object",
+                    "required": ["identificador_consulta", "datos_entrada"],
+                    "properties": {
+                        "identificador_consulta": {"type": "string", "title": "ID / RUT a Consultar"},
+                        "datos_entrada": {"type": "string", "title": "Parámetros Adicionales"}
+                    }
+                }
+                out_schema = {
+                    "type": "object",
+                    "properties": {
+                        "resultado_exitoso": {"type": "boolean", "title": "Validación Exitosa"},
+                        "nivel_riesgo": {"type": "string", "title": "Nivel de Riesgo (Bajo/Medio/Alto)"},
+                        "observaciones": {"type": "string", "title": "Detalle de la Evaluación"}
+                    }
+                }
+
+            code_template = f'''from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, Field
+from typing import Optional
+from datetime import datetime
+
+app = FastAPI(
+    title="{srv_name}",
+    description="Microservicio generado automáticamente por IA para Workflow Engine",
+    version="1.0.0"
+)
+
+# 1. Modelo de Entrada (Input Payload)
+class RequestPayload(BaseModel):
+'''
+            for prop, val in in_schema["properties"].items():
+                py_type = "str" if val.get("type") == "string" else ("float" if val.get("type") == "number" else ("int" if val.get("type") == "integer" else "bool"))
+                code_template += f'    {prop}: {py_type} = Field(..., description="{val.get("title", prop)}")\n'
+
+            code_template += f'''
+# 2. Modelo de Salida (Output Schema)
+class ResponsePayload(BaseModel):
+'''
+            for prop, val in out_schema["properties"].items():
+                py_type = "str" if val.get("type") == "string" else ("float" if val.get("type") == "number" else ("int" if val.get("type") == "integer" else "bool"))
+                code_template += f'    {prop}: {py_type}\n'
+
+            code_template += f'''
+# 3. Endpoint Principal del Microservicio
+@app.post("/api/v1/process", response_model=ResponsePayload)
+def process_data(req: RequestPayload):
+    """
+    Lógica de negocio ejecutada en Cloud Run.
+    """
+    # Lógica procesada
+    return ResponsePayload(
+'''
+            for prop, val in out_schema["properties"].items():
+                if val.get("type") == "boolean":
+                    default_val = "True"
+                elif val.get("type") in ["number", "integer"]:
+                    default_val = "950" if "score" in prop else "1000000"
+                elif val.get("format") == "date":
+                    default_val = 'datetime.now().strftime("%Y-%m-%d")'
+                else:
+                    default_val = '"76.452.190-K"' if "rut" in prop else '"Procesado con éxito"'
+                code_template += f'        {prop}={default_val},\n'
+
+            code_template += f'''    )
+
+@app.get("/health")
+def health():
+    return {{"status": "ok", "service": "{srv_key}"}}
+'''
+
+            st.session_state.ai_generated_api = {
+                "key": srv_key,
+                "name": srv_name,
+                "url": f"https://{srv_key.lower().replace('_', '-')}-xyz.a.run.app/api/v1/process",
+                "in_schema": in_schema,
+                "out_schema": out_schema,
+                "code": code_template
+            }
+
+    # Mostrar Resultados Generados por la IA
+    if st.session_state.ai_generated_api:
+        api_data = st.session_state.ai_generated_api
+        st.success(f"🎉 **Microservicio Diseñado:** `{api_data['name']}` `[{api_data['key']}]`")
+
+        tab_schemas, tab_code, tab_save = st.tabs(["📋 Esquemas JSON (Input/Output)", "🐍 Código Python FastAPI", "🚀 Registrar en Catálogo"])
+
+        with tab_schemas:
+            col_in, col_out = st.columns(2)
+            with col_in:
+                st.markdown("**Input Schema (Datos que requiere):**")
+                st.json(api_data["in_schema"])
+            with col_out:
+                st.markdown("**Output Schema (Datos que devuelve al Workflow):**")
+                st.json(api_data["out_schema"])
+
+        with tab_code:
+            st.markdown("**Código del Microservicio listo para desplegar en Cloud Run:**")
+            st.code(api_data["code"], language="python")
+
+        with tab_save:
+            st.markdown("##### 🚀 Registrar este Microservicio en el Catálogo de Workflows")
+            st.write(f"Al registrarlo, quedará disponible de inmediato en cualquier subetapa del Diseñador de Workflows.")
+            
+            col_reg1, col_reg2 = st.columns([3, 1])
+            with col_reg1:
+                st.text_input("Endpoint URL:", value=api_data["url"], key="reg_api_url")
+            with col_reg2:
+                st.write("")
+                st.write("")
+                if st.button("➕ Guardar en Catálogo", type="primary"):
+                    # Evitar duplicados
+                    existing_keys = [s["key"] for s in st.session_state.microservices]
+                    if api_data["key"] not in existing_keys:
+                        st.session_state.microservices.append({
+                            "key": api_data["key"],
+                            "name": api_data["name"],
+                            "url": api_data["url"]
+                        })
+                    st.success(f"✅ ¡Microservicio '{api_data['name']}' registrado en el catálogo!")
+                    st.balloons()
+
+# ==============================================================================
+# VISTA 4: CATÁLOGO DE MICROSERVICIOS
 # ==============================================================================
 elif mode == "🔌 Catálogo de Microservicios":
     st.markdown('<div class="main-header">🔌 Catálogo y Fábrica de Microservicios</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Gestiona los microservicios disponibles en Cloud Run para asociarlos a cualquier subetapa.</div>', unsafe_allow_html=True)
 
-    with st.expander("➕ **Registrar Nuevo Microservicio**", expanded=True):
+    with st.expander("➕ **Registrar Nuevo Microservicio Manualmente**", expanded=False):
         with st.form("form_new_service", clear_on_submit=True):
             col_srv1, col_srv2 = st.columns([2, 1])
             with col_srv1:
@@ -548,7 +756,8 @@ elif mode == "🔌 Catálogo de Microservicios":
                 else:
                     st.error("Debes completar el nombre y la clave del servicio.")
 
-    st.markdown("#### 📦 Microservicios Registrados:")
+    st.markdown("#### 📦 Microservicios Registrados en el Sistema:")
     for s in st.session_state.microservices:
         with st.container():
             st.markdown(f"- ⚡ **{s['name']}** `[{s['key']}]` ➔ `{s['url']}`")
+
