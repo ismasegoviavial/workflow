@@ -66,17 +66,19 @@ def format_phone_number(phone_str: str) -> str:
     return phone_str
 
 # ==============================================================================
-# DATOS DE EJEMPLO PRE-CONFIGURADOS (3 ETAPAS x 3 SUBETAPAS + MICROSERVICIOS)
+# DATOS DE EJEMPLO (SERIE Y PARALELO + MICROSERVICIOS)
 # ==============================================================================
 EXAMPLE_STAGES = [
     {
         "id": "stg-01",
-        "title": "Etapa 1: Admisión y Validación de Identidad",
+        "title": "Admisión y Validación de Identidad",
         "key": "ETAPA_ADMISION",
+        "mode": "SERIES",
+        "track": "Principal",
         "substages": [
             {
                 "id": "sub-1-1",
-                "title": "Ingreso de Solicitud y Datos del Cliente",
+                "title": "Ingreso de Datos y RUT",
                 "key": "SUB_INGRESO_DATOS",
                 "editor_role": "admision@miempresa.com",
                 "reviewer_role": "supervisor.admision@miempresa.com",
@@ -113,7 +115,7 @@ EXAMPLE_STAGES = [
             },
             {
                 "id": "sub-1-2",
-                "title": "Cálculo de Plazo y Días Hábiles",
+                "title": "Cálculo de Plazos",
                 "key": "SUB_CALC_DIAS",
                 "editor_role": "operaciones@miempresa.com",
                 "reviewer_role": "jefe.operaciones@miempresa.com",
@@ -121,33 +123,16 @@ EXAMPLE_STAGES = [
                 "fields": [
                     {
                         "id": "f-1-2-1",
-                        "title": "Fecha de Inicio del Trámite",
+                        "title": "Fecha de Inicio",
                         "name": "fecha_inicio",
                         "type": "date",
                         "required": True
                     },
                     {
                         "id": "f-1-2-2",
-                        "title": "Días Hábiles Solicitados",
+                        "title": "Días Hábiles",
                         "name": "dias_habiles",
                         "type": "number",
-                        "required": True
-                    }
-                ]
-            },
-            {
-                "id": "sub-1-3",
-                "title": "Carga de Cédula de Identidad",
-                "key": "SUB_CARGA_CEDULA",
-                "editor_role": "admision@miempresa.com",
-                "reviewer_role": "supervisor.admision@miempresa.com",
-                "service_key": "",
-                "fields": [
-                    {
-                        "id": "f-1-3-1",
-                        "title": "Documento Cédula (PDF)",
-                        "name": "archivo_cedula",
-                        "type": "file",
                         "required": True
                     }
                 ]
@@ -155,16 +140,18 @@ EXAMPLE_STAGES = [
         ]
     },
     {
-        "id": "stg-02",
-        "title": "Etapa 2: Evaluación Técnica y OCR",
-        "key": "ETAPA_EVALUACION_OCR",
+        "id": "stg-02a",
+        "title": "Evaluación Técnica (OCR)",
+        "key": "ETAPA_OCR_TECNICA",
+        "mode": "PARALLEL",
+        "track": "Track A (Técnico)",
         "substages": [
             {
                 "id": "sub-2-1",
-                "title": "Extracción OCR de Documentos y Facturas",
+                "title": "Extracción OCR de Documentos",
                 "key": "SUB_OCR_EXTRACT",
-                "editor_role": "analista.riesgo@miempresa.com",
-                "reviewer_role": "subgerente.riesgo@miempresa.com",
+                "editor_role": "analista.tecnico@miempresa.com",
+                "reviewer_role": "supervisor.tecnico@miempresa.com",
                 "service_key": "SRV_PDF_READER",
                 "fields": [
                     {
@@ -176,10 +163,19 @@ EXAMPLE_STAGES = [
                         "required": True
                     }
                 ]
-            },
+            }
+        ]
+    },
+    {
+        "id": "stg-02b",
+        "title": "Evaluación Financiera (Scoring)",
+        "key": "ETAPA_SCORING_FINANCIERO",
+        "mode": "PARALLEL",
+        "track": "Track B (Financiero)",
+        "substages": [
             {
                 "id": "sub-2-2",
-                "title": "Evaluación de Scoring Financiero",
+                "title": "Scoring Crediticio",
                 "key": "SUB_SCORING",
                 "editor_role": "analista.riesgo@miempresa.com",
                 "reviewer_role": "subgerente.riesgo@miempresa.com",
@@ -196,40 +192,9 @@ EXAMPLE_STAGES = [
                     },
                     {
                         "id": "f-2-2-2",
-                        "title": "Ingresos Mensuales Declarados (CLP)",
+                        "title": "Ingresos Mensuales (CLP)",
                         "name": "ingresos_mensuales",
                         "type": "number",
-                        "required": True
-                    },
-                    {
-                        "id": "f-2-2-3",
-                        "title": "Monto Solicitado",
-                        "name": "monto_solicitado",
-                        "type": "number",
-                        "required": True
-                    }
-                ]
-            },
-            {
-                "id": "sub-2-3",
-                "title": "Dictamen de Aprobación de Riesgo",
-                "key": "SUB_DICTAMEN_RIESGO",
-                "editor_role": "analista.riesgo@miempresa.com",
-                "reviewer_role": "subgerente.riesgo@miempresa.com",
-                "service_key": "",
-                "fields": [
-                    {
-                        "id": "f-2-3-1",
-                        "title": "Comentarios de Evaluación Técnica",
-                        "name": "comentarios_tecnicos",
-                        "type": "string",
-                        "required": True
-                    },
-                    {
-                        "id": "f-2-3-2",
-                        "title": "Riesgo Mitigado y Conforme",
-                        "name": "riesgo_conforme",
-                        "type": "boolean",
                         "required": True
                     }
                 ]
@@ -238,12 +203,14 @@ EXAMPLE_STAGES = [
     },
     {
         "id": "stg-03",
-        "title": "Etapa 3: Aprobación y Generación Legal",
+        "title": "Aprobación y Contrato",
         "key": "ETAPA_APROBACION_LEGAL",
+        "mode": "SERIES",
+        "track": "Principal",
         "substages": [
             {
                 "id": "sub-3-1",
-                "title": "Generación Automática de Contrato PDF",
+                "title": "Generación de Contrato",
                 "key": "SUB_GEN_CONTRATO",
                 "editor_role": "legal@miempresa.com",
                 "reviewer_role": "fiscal@miempresa.com",
@@ -260,7 +227,7 @@ EXAMPLE_STAGES = [
             },
             {
                 "id": "sub-3-2",
-                "title": "Firma Electrónica y Conformidad",
+                "title": "Firma Electrónica",
                 "key": "SUB_FIRMA_DIGITAL",
                 "editor_role": "legal@miempresa.com",
                 "reviewer_role": "fiscal@miempresa.com",
@@ -282,23 +249,6 @@ EXAMPLE_STAGES = [
                         "required": True
                     }
                 ]
-            },
-            {
-                "id": "sub-3-3",
-                "title": "Cierre y Activación del Servicio",
-                "key": "SUB_ACTIVACION_FINAL",
-                "editor_role": "operaciones@miempresa.com",
-                "reviewer_role": "gerencia@miempresa.com",
-                "service_key": "",
-                "fields": [
-                    {
-                        "id": "f-3-3-1",
-                        "title": "Confirmar Activación de Cuenta",
-                        "name": "cuenta_activada",
-                        "type": "boolean",
-                        "required": True
-                    }
-                ]
             }
         ]
     }
@@ -310,11 +260,14 @@ EXAMPLE_STAGES = [
 if "workflow" not in st.session_state:
     st.session_state.workflow = {
         "id": "wf-custom-01",
-        "name": "Workflow de Admisión y Evaluación con Microservicios",
+        "name": "Workflow de Admisión y Evaluación",
         "tenant": "MI_EMPRESA",
         "code": "WF_ONBOARDING",
         "stages": json.loads(json.dumps(EXAMPLE_STAGES))
     }
+
+if "selected_stage_idx" not in st.session_state:
+    st.session_state.selected_stage_idx = 0
 
 if "microservices" not in st.session_state:
     st.session_state.microservices = [
@@ -356,15 +309,15 @@ if "execution" not in st.session_state:
 st.markdown("""
 <style>
     .main-header {
-        font-size: 1.4rem;
+        font-size: 1.3rem;
         font-weight: 700;
         color: #0f172a;
-        margin-bottom: 0.25rem;
+        margin-bottom: 0.2rem;
     }
     .sub-header {
-        font-size: 0.85rem;
-        color: #475569;
-        margin-bottom: 1.25rem;
+        font-size: 0.82rem;
+        color: #64748b;
+        margin-bottom: 1rem;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -374,7 +327,7 @@ st.sidebar.markdown("### Workflow Studio")
 st.sidebar.caption(f"Tenant: **{st.session_state.workflow['tenant']}**")
 
 mode = st.sidebar.radio(
-    "Selecciona la Vista:",
+    "Vista:",
     [
         "Diseñador de Workflows",
         "Portal de Ejecución (Runtime)",
@@ -389,18 +342,20 @@ st.sidebar.markdown(f"**Microservicios en Catálogo:** `{len(st.session_state.mi
 
 col_btn1, col_btn2 = st.sidebar.columns(2)
 with col_btn1:
-    if st.button("Cargar Ejemplo 3x3", help="Cargar 3 etapas con 3 subetapas y microservicios"):
+    if st.button("Cargar Ejemplo", help="Cargar flujo de ejemplo"):
         st.session_state.workflow["stages"] = json.loads(json.dumps(EXAMPLE_STAGES))
+        st.session_state.selected_stage_idx = 0
         st.session_state.execution["status"] = "NOT_STARTED"
         st.session_state.execution["current_stage_idx"] = 0
         st.session_state.execution["current_substage_idx"] = 0
         st.session_state.execution["form_data"] = {}
-        st.success("Ejemplo cargado correctamente.")
+        st.success("Ejemplo cargado.")
         st.rerun()
 
 with col_btn2:
-    if st.button("Vaciar Todo", help="Dejar el flujo 100% en blanco"):
+    if st.button("Vaciar Todo", help="Dejar el flujo en blanco"):
         st.session_state.workflow["stages"] = []
+        st.session_state.selected_stage_idx = 0
         st.session_state.execution = {
             "code": f"EXEC-{datetime.utcnow().year}-00001",
             "status": "NOT_STARTED",
@@ -414,11 +369,11 @@ with col_btn2:
         st.rerun()
 
 # ==============================================================================
-# VISTA 1: DISEÑADOR DE WORKFLOWS (BUILDER)
+# VISTA 1: DISEÑADOR VISUAL E INTERACTIVO (FOCUSED INSPECTOR)
 # ==============================================================================
 if mode == "Diseñador de Workflows":
-    st.markdown('<div class="main-header">Diseñador de Workflows y Subetapas</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Crea y estructura las etapas, agrega subetapas, define sus campos dinámicos con formato y máscaras, y asigna roles de Google Workspace.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header">Diseñador de Workflows</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Selecciona cualquier etapa del diagrama para modificarla directamente en el panel inferior.</div>', unsafe_allow_html=True)
 
     col_name, col_code = st.columns([3, 1])
     with col_name:
@@ -426,326 +381,370 @@ if mode == "Diseñador de Workflows":
     with col_code:
         st.session_state.workflow["code"] = st.text_input("Código Técnico:", value=st.session_state.workflow["code"])
 
-    st.divider()
+    stages = st.session_state.workflow["stages"]
 
-    # Formulario para Crear Nueva Etapa
-    with st.expander("Crear Nueva Etapa", expanded=len(st.session_state.workflow["stages"]) == 0):
-        with st.form("form_new_stage", clear_on_submit=True):
-            col_s1, col_s2 = st.columns([3, 1])
-            with col_s1:
-                stage_title = st.text_input("Nombre de la Etapa:", placeholder="Ej: Recepción y Validación")
-            with col_s2:
-                stage_key = st.text_input("Clave de la Etapa:", placeholder="Ej: ETAPA_RECEPCION")
-            
-            submit_stage = st.form_submit_button("Crear Etapa", type="primary")
-            if submit_stage:
-                if stage_title:
-                    key = stage_key if stage_key else stage_title.upper().replace(" ", "_")
-                    new_stage = {
-                        "id": str(uuid.uuid4()),
-                        "title": stage_title,
-                        "key": key,
-                        "substages": []
-                    }
-                    st.session_state.workflow["stages"].append(new_stage)
-                    st.success(f"Etapa '{stage_title}' creada exitosamente.")
-                    st.rerun()
-                else:
-                    st.error("Debes ingresar el nombre de la etapa.")
+    # Validar índice activo
+    if len(stages) > 0:
+        if st.session_state.selected_stage_idx >= len(stages):
+            st.session_state.selected_stage_idx = max(0, len(stages) - 1)
 
-    # Listado de Etapas Creadas
-    if len(st.session_state.workflow["stages"]) == 0:
-        st.info("El workflow está vacío. Puedes hacer clic en 'Crear Nueva Etapa' o cargar el ejemplo desde la barra lateral con 'Cargar Ejemplo 3x3'.")
+    st.markdown("---")
+
+    # Botones superiores
+    col_hdr1, col_hdr2, col_hdr3 = st.columns([4, 2, 2])
+    with col_hdr1:
+        st.markdown("### Diagrama del Flujo (Pipeline)")
+    with col_hdr2:
+        if st.button("+ Agregar Etapa en Serie", type="secondary"):
+            new_s = {
+                "id": str(uuid.uuid4()),
+                "title": f"Etapa {len(stages) + 1}",
+                "key": f"ETAPA_{len(stages) + 1}",
+                "mode": "SERIES",
+                "track": "Principal",
+                "substages": []
+            }
+            stages.append(new_s)
+            st.session_state.selected_stage_idx = len(stages) - 1
+            st.rerun()
+    with col_hdr3:
+        if st.button("+ Agregar Etapa en Paralelo", type="secondary"):
+            new_s = {
+                "id": str(uuid.uuid4()),
+                "title": f"Etapa Paralela {len(stages) + 1}",
+                "key": f"ETAPA_PARALELA_{len(stages) + 1}",
+                "mode": "PARALLEL",
+                "track": f"Track Paralelo {len(stages) + 1}",
+                "substages": []
+            }
+            stages.append(new_s)
+            st.session_state.selected_stage_idx = len(stages) - 1
+            st.rerun()
+
+    # RENDER DEL DIAGRAMA
+    if len(stages) == 0:
+        st.info("El flujo está vacío. Agrega una etapa arriba o carga el ejemplo desde la barra lateral.")
     else:
-        # DIAGRAMA DE ARQUITECTURA ESTILO ARCHIFY
-        st.markdown("### Diagrama de Arquitectura del Flujo (Pipeline Secuencial)")
-        st.caption("Visualización del pipeline de etapas secuenciales, subetapas, microservicios conectados y roles:")
-        
-        flow_cols = st.columns(len(st.session_state.workflow["stages"]) + 2)
-        
+        flow_cols = st.columns(len(stages) + 2)
+
+        # INICIO
         with flow_cols[0]:
             st.markdown("""
-            <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:10px; text-align:center; min-height:105px;">
-                <div style="font-size:11px; font-weight:bold; color:#0f172a; margin-top:10px;">INICIO</div>
-                <div style="font-size:10px; color:#64748b; margin-top:4px;">Disparo Manual / API</div>
+            <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:8px; text-align:center; min-height:110px;">
+                <div style="font-size:11px; font-weight:bold; color:#0f172a; margin-top:20px;">INICIO</div>
+                <div style="font-size:10px; color:#64748b; margin-top:4px;">Disparo</div>
             </div>
             """, unsafe_allow_html=True)
-            st.markdown("<div style='text-align:center; font-size:16px; color:#94a3b8; margin-top:4px;'>→</div>", unsafe_allow_html=True)
+            st.markdown("<div style='text-align:center; font-size:14px; color:#94a3b8; margin-top:4px;'>→</div>", unsafe_allow_html=True)
 
-        for s_idx, stg in enumerate(st.session_state.workflow["stages"]):
+        # NODOS DE ETAPAS
+        for s_idx, stg in enumerate(stages):
+            is_selected = (s_idx == st.session_state.selected_stage_idx)
+            is_parallel = (stg.get("mode") == "PARALLEL")
+
+            if is_selected:
+                card_border = "2px solid #2563eb"
+                card_bg = "#eff6ff"
+                badge_color = "#1d4ed8"
+                status_txt = "● Seleccionada"
+            elif is_parallel:
+                card_border = "1.5px dashed #0284c7"
+                card_bg = "#f0f9ff"
+                badge_color = "#0369a1"
+                status_txt = "Bifurcación"
+            else:
+                card_border = "1px solid #cbd5e1"
+                card_bg = "#ffffff"
+                badge_color = "#475569"
+                status_txt = "Serie"
+
             with flow_cols[s_idx + 1]:
                 sub_count = len(stg["substages"])
-                srv_count = sum(1 for sub in stg["substages"] if sub.get("service_key"))
-                
+                mode_tag = f"PARALELO ({stg.get('track', 'Track')})" if is_parallel else "SERIE"
+
                 srv_badges = ""
                 for sub in stg["substages"]:
                     if sub.get("service_key"):
-                        srv_badges += f"<div style='font-size:9px; background:#f1f5f9; color:#334155; border:1px solid #cbd5e1; border-radius:4px; padding:2px 4px; margin-top:2px;'>Servicio: {sub['service_key']}</div>"
+                        srv_badges += f"<div style='font-size:8px; background:#f1f5f9; color:#334155; border:1px solid #cbd5e1; border-radius:3px; padding:1px 2px; margin-top:1px;'>Srv: {sub['service_key']}</div>"
 
                 st.markdown(f"""
-                <div style="background:#ffffff; border:1px solid #2563eb; border-radius:8px; padding:10px; min-height:105px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                    <div style="font-size:10px; font-weight:bold; color:#2563eb;">ETAPA {s_idx + 1}</div>
-                    <div style="font-weight:600; font-size:12px; color:#0f172a; margin:2px 0; line-height:1.2;">{stg['title']}</div>
-                    <div style="font-size:10px; color:#64748b;">{sub_count} Subetapa{'s' if sub_count != 1 else ''}</div>
+                <div style="background:{card_bg}; border:{card_border}; border-radius:8px; padding:8px; min-height:110px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                    <div style="font-size:9px; font-weight:bold; color:{badge_color};">{mode_tag}</div>
+                    <div style="font-weight:600; font-size:11px; color:#0f172a; margin:2px 0; line-height:1.2;">{stg['title']}</div>
+                    <div style="font-size:9px; color:#64748b;">{sub_count} Subetapa{'s' if sub_count != 1 else ''}</div>
                     {srv_badges}
                 </div>
                 """, unsafe_allow_html=True)
-                if s_idx < len(st.session_state.workflow["stages"]) - 1:
-                    st.markdown("<div style='text-align:center; font-size:16px; color:#94a3b8; margin-top:4px;'>→</div>", unsafe_allow_html=True)
 
+                # Botón de selección directa en cada nodo
+                c_sel_btn, c_l, c_r = st.columns([2, 1, 1])
+                with c_sel_btn:
+                    if st.button("Modificar" if is_selected else "Elegir", key=f"btn_node_{stg['id']}", type="primary" if is_selected else "secondary"):
+                        st.session_state.selected_stage_idx = s_idx
+                        st.rerun()
+                with c_l:
+                    if st.button("←", key=f"btn_l_{stg['id']}", disabled=(s_idx == 0), help="Mover hacia la izquierda"):
+                        stages[s_idx], stages[s_idx - 1] = stages[s_idx - 1], stages[s_idx]
+                        st.session_state.selected_stage_idx = s_idx - 1
+                        st.rerun()
+                with c_r:
+                    if st.button("→", key=f"btn_r_{stg['id']}", disabled=(s_idx == len(stages) - 1), help="Mover hacia la derecha"):
+                        stages[s_idx], stages[s_idx + 1] = stages[s_idx + 1], stages[s_idx]
+                        st.session_state.selected_stage_idx = s_idx + 1
+                        st.rerun()
+
+                if s_idx < len(stages) - 1:
+                    st.markdown("<div style='text-align:center; font-size:14px; color:#94a3b8; margin-top:2px;'>→</div>", unsafe_allow_html=True)
+
+        # FIN
         with flow_cols[-1]:
             st.markdown("""
-            <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:10px; text-align:center; min-height:105px;">
-                <div style="font-size:11px; font-weight:bold; color:#0f172a; margin-top:10px;">FIN</div>
-                <div style="font-size:10px; color:#64748b; margin-top:4px;">Completado / Auditado</div>
+            <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:8px; text-align:center; min-height:110px;">
+                <div style="font-size:11px; font-weight:bold; color:#0f172a; margin-top:20px;">FIN</div>
+                <div style="font-size:10px; color:#64748b; margin-top:4px;">Cierre</div>
             </div>
             """, unsafe_allow_html=True)
 
+        # ==============================================================================
+        # PANEL ENFOCADO DE LA ETAPA SELECCIONADA (SIN CONFUSIONES NI REPETICIONES)
+        # ==============================================================================
         st.markdown("---")
-        st.markdown(f"#### Configuración y Orden Secuencial ({len(st.session_state.workflow['stages'])} Etapas)")
+        active_stage = stages[st.session_state.selected_stage_idx]
         
-        for s_idx, stage in enumerate(st.session_state.workflow["stages"]):
-            with st.container():
-                col_st_title, col_st_up, col_st_down, col_st_del = st.columns([4, 0.7, 0.7, 1])
-                with col_st_title:
-                    st.markdown(f"### Etapa {s_idx + 1}: **{stage['title']}** `[{stage['key']}]`")
-                with col_st_up:
-                    if st.button("Subir", key=f"up_stage_{stage['id']}", disabled=(s_idx == 0)):
-                        st.session_state.workflow["stages"][s_idx], st.session_state.workflow["stages"][s_idx - 1] = (
-                            st.session_state.workflow["stages"][s_idx - 1],
-                            st.session_state.workflow["stages"][s_idx]
+        st.markdown(f"### Modificando: **{active_stage['title']}** (Etapa {st.session_state.selected_stage_idx + 1} de {len(stages)})")
+
+        col_st_title, col_st_key, col_st_mode, col_st_track, col_st_del = st.columns([3, 2, 2, 2, 1])
+        with col_st_title:
+            active_stage["title"] = st.text_input("Nombre de la Etapa:", value=active_stage["title"], key=f"inp_stg_title_{active_stage['id']}")
+        with col_st_key:
+            active_stage["key"] = st.text_input("Clave Técnica:", value=active_stage["key"], key=f"inp_stg_key_{active_stage['id']}")
+        with col_st_mode:
+            current_mode_idx = 0 if active_stage.get("mode") == "SERIES" else 1
+            sel_mode = st.selectbox("Modo de Ejecución:", ["Serie (Secuencial)", "Paralelo (Bifurcación)"], index=current_mode_idx, key=f"inp_stg_mode_{active_stage['id']}")
+            active_stage["mode"] = "SERIES" if "Serie" in sel_mode else "PARALLEL"
+        with col_st_track:
+            if active_stage["mode"] == "PARALLEL":
+                active_stage["track"] = st.text_input("Nombre del Track:", value=active_stage.get("track", "Track Paralelo"), key=f"inp_stg_track_{active_stage['id']}")
+            else:
+                active_stage["track"] = "Principal"
+                st.text_input("Track:", value="Principal (Serie)", disabled=True)
+        with col_st_del:
+            st.write("")
+            st.write("")
+            if st.button("Eliminar Etapa", key=f"btn_del_active_{active_stage['id']}"):
+                stages.pop(st.session_state.selected_stage_idx)
+                st.session_state.selected_stage_idx = max(0, st.session_state.selected_stage_idx - 1)
+                st.rerun()
+
+        # SUBETAPAS DE LA ETAPA SELECCIONADA
+        st.markdown("#### Subetapas")
+        if len(active_stage["substages"]) == 0:
+            st.caption("Esta etapa aún no tiene subetapas. Agrega una subetapa con el formulario inferior.")
+        else:
+            for sub_idx, substage in enumerate(active_stage["substages"]):
+                srv_tag = f" | Servicio: {substage['service_key']}" if substage.get("service_key") else " | Manual"
+                with st.expander(f"Subetapa {sub_idx + 1}: {substage['title']} [{substage['key']}]{srv_tag} — ({len(substage['fields'])} campos)", expanded=True):
+                    col_sub_info, col_sub_actions = st.columns([3, 1.8])
+                    
+                    with col_sub_info:
+                        st.write(f"**Rol Editor:** `{substage['editor_role'] or 'No asignado'}` | **Rol Revisor:** `{substage['reviewer_role'] or 'No asignado'}`")
+                        if substage.get("service_key"):
+                            st.info(f"**Microservicio Asociado:** `{substage['service_key']}`")
+                        else:
+                            st.caption("Formulario Manual (sin microservicio asociado)")
+
+                    with col_sub_actions:
+                        col_c1, col_c2, col_c3, col_c4 = st.columns(4)
+                        with col_c1:
+                            if st.button("Subir", key=f"btn_sub_up_{substage['id']}", disabled=(sub_idx == 0)):
+                                active_stage["substages"][sub_idx], active_stage["substages"][sub_idx - 1] = active_stage["substages"][sub_idx - 1], active_stage["substages"][sub_idx]
+                                st.rerun()
+                        with col_c2:
+                            if st.button("Bajar", key=f"btn_sub_dn_{substage['id']}", disabled=(sub_idx == len(active_stage["substages"]) - 1)):
+                                active_stage["substages"][sub_idx], active_stage["substages"][sub_idx + 1] = active_stage["substages"][sub_idx + 1], active_stage["substages"][sub_idx]
+                                st.rerun()
+                        with col_c3:
+                            if st.button("Clonar", key=f"btn_sub_cl_{substage['id']}"):
+                                cloned_sub = json.loads(json.dumps(substage))
+                                cloned_sub["id"] = str(uuid.uuid4())
+                                cloned_sub["title"] = f"{substage['title']} (Copia)"
+                                cloned_sub["key"] = f"{substage['key']}_COPY"
+                                active_stage["substages"].append(cloned_sub)
+                                st.rerun()
+                        with col_c4:
+                            if st.button("Borrar", key=f"btn_sub_dl_{substage['id']}"):
+                                active_stage["substages"].pop(sub_idx)
+                                st.rerun()
+
+                    # Configuración de Roles y Microservicio para esta Subetapa
+                    st.markdown("##### Configuración de Roles y Microservicio")
+                    col_ed, col_rev, col_srv = st.columns(3)
+                    with col_ed:
+                        substage["editor_role"] = st.text_input(
+                            "Rol Editor (Workspace):",
+                            value=substage["editor_role"],
+                            key=f"ed_{substage['id']}",
+                            placeholder="ej: operaciones@miempresa.com"
                         )
-                        st.rerun()
-                with col_st_down:
-                    if st.button("Bajar", key=f"down_stage_{stage['id']}", disabled=(s_idx == len(st.session_state.workflow["stages"]) - 1)):
-                        st.session_state.workflow["stages"][s_idx], st.session_state.workflow["stages"][s_idx + 1] = (
-                            st.session_state.workflow["stages"][s_idx + 1],
-                            st.session_state.workflow["stages"][s_idx]
+                    with col_rev:
+                        substage["reviewer_role"] = st.text_input(
+                            "Rol Revisor (Workspace):",
+                            value=substage["reviewer_role"],
+                            key=f"rev_{substage['id']}",
+                            placeholder="ej: supervisores@miempresa.com"
                         )
-                        st.rerun()
-                with col_st_del:
-                    if st.button(f"Eliminar", key=f"del_stage_{stage['id']}"):
-                        st.session_state.workflow["stages"].pop(s_idx)
-                        st.rerun()
+                    with col_srv:
+                        srv_options = ["(Manual / Formulario)"] + [s["key"] for s in st.session_state.microservices]
+                        current_srv_idx = 0
+                        if substage["service_key"] in srv_options:
+                            current_srv_idx = srv_options.index(substage["service_key"])
+                        selected_srv = st.selectbox(
+                            "Microservicio Asociado:",
+                            srv_options,
+                            index=current_srv_idx,
+                            key=f"srv_{substage['id']}"
+                        )
+                        substage["service_key"] = "" if selected_srv == "(Manual / Formulario)" else selected_srv
 
-                # Subetapas dentro de esta Etapa
-                if len(stage["substages"]) == 0:
-                    st.warning("Esta etapa no tiene subetapas. Agrega una a continuación.")
-                else:
-                    for sub_idx, substage in enumerate(stage["substages"]):
-                        srv_tag = f" | Servicio: `{substage['service_key']}`" if substage.get("service_key") else ""
-                        with st.expander(f"Subetapa {s_idx + 1}.{sub_idx + 1}: {substage['title']} [{substage['key']}]{srv_tag} — ({len(substage['fields'])} campos)", expanded=True):
-                            col_sub_info, col_sub_actions = st.columns([3, 1.8])
-                            
-                            with col_sub_info:
-                                st.write(f"**Rol Editor:** `{substage['editor_role'] or 'No asignado'}` | **Rol Revisor:** `{substage['reviewer_role'] or 'No asignado'}`")
-                                if substage.get("service_key"):
-                                    st.info(f"**Microservicio Asociado:** `{substage['service_key']}`")
-                                else:
-                                    st.caption("Formulario Manual (sin microservicio asociado)")
+                    # Constructor de Campos Dinámicos
+                    st.markdown("##### Campos del Formulario (Input Schema)")
+                    if len(substage["fields"]) > 0:
+                        for f_idx, field in enumerate(substage["fields"]):
+                            col_f_name, col_f_title, col_f_type, col_f_req, col_f_del = st.columns([2, 2, 2.5, 1, 0.5])
+                            with col_f_name:
+                                st.code(field["name"])
+                            with col_f_title:
+                                st.write(f"**{field['title']}**")
+                            with col_f_type:
+                                fmt_info = f" ({field.get('format', 'libre')})" if field.get('format') and field.get('format') != 'none' else ""
+                                mask_info = f" | `{field.get('placeholder')}`" if field.get('placeholder') else ""
+                                st.caption(f"Tipo: `{field['type']}`{fmt_info}{mask_info}")
+                            with col_f_req:
+                                st.write("Obligatorio" if field["required"] else "Opcional")
+                            with col_f_del:
+                                if st.button("Eliminar", key=f"del_f_{substage['id']}_{field['id']}"):
+                                    substage["fields"].pop(f_idx)
+                                    st.rerun()
+                    else:
+                        st.caption("No hay campos configurados en esta subetapa.")
 
-                            with col_sub_actions:
-                                col_c1, col_c2, col_c3, col_c4 = st.columns(4)
-                                with col_c1:
-                                    if st.button("Subir", key=f"up_sub_{substage['id']}", help="Subir orden de subetapa", disabled=(sub_idx == 0)):
-                                        stage["substages"][sub_idx], stage["substages"][sub_idx - 1] = (
-                                            stage["substages"][sub_idx - 1],
-                                            stage["substages"][sub_idx]
-                                        )
-                                        st.rerun()
-                                with col_c2:
-                                    if st.button("Bajar", key=f"down_sub_{substage['id']}", help="Bajar orden de subetapa", disabled=(sub_idx == len(stage["substages"]) - 1)):
-                                        stage["substages"][sub_idx], stage["substages"][sub_idx + 1] = (
-                                            stage["substages"][sub_idx + 1],
-                                            stage["substages"][sub_idx]
-                                        )
-                                        st.rerun()
-                                with col_c3:
-                                    if st.button("Clonar", key=f"clone_sub_{substage['id']}", help="Clonar subetapa"):
-                                        cloned_sub = json.loads(json.dumps(substage))
-                                        cloned_sub["id"] = str(uuid.uuid4())
-                                        cloned_sub["title"] = f"{substage['title']} (Copia)"
-                                        cloned_sub["key"] = f"{substage['key']}_COPY"
-                                        stage["substages"].append(cloned_sub)
-                                        st.rerun()
-                                with col_c4:
-                                    if st.button("Borrar", key=f"del_sub_{substage['id']}", help="Borrar subetapa"):
-                                        stage["substages"].pop(sub_idx)
-                                        st.rerun()
-
-                            # Configuración de Roles y Microservicio para esta Subetapa
-                            st.markdown("##### Configuración de Roles y Asociación de Microservicio")
-                            col_ed, col_rev, col_srv = st.columns(3)
-                            with col_ed:
-                                substage["editor_role"] = st.text_input(
-                                    "Rol Editor (Workspace):",
-                                    value=substage["editor_role"],
-                                    key=f"ed_{substage['id']}",
-                                    placeholder="ej: operaciones@miempresa.com"
-                                )
-                            with col_rev:
-                                substage["reviewer_role"] = st.text_input(
-                                    "Rol Revisor (Workspace):",
-                                    value=substage["reviewer_role"],
-                                    key=f"rev_{substage['id']}",
-                                    placeholder="ej: supervisores@miempresa.com"
-                                )
-                            with col_srv:
-                                srv_options = ["(Manual / Formulario)"] + [s["key"] for s in st.session_state.microservices]
-                                current_srv_idx = 0
-                                if substage["service_key"] in srv_options:
-                                    current_srv_idx = srv_options.index(substage["service_key"])
-                                selected_srv = st.selectbox(
-                                    "Microservicio Asociado:",
-                                    srv_options,
-                                    index=current_srv_idx,
-                                    key=f"srv_{substage['id']}",
-                                    help="Selecciona un microservicio del catálogo para que se ejecute automáticamente en esta subetapa."
-                                )
-                                substage["service_key"] = "" if selected_srv == "(Manual / Formulario)" else selected_srv
-
-                            # Constructor de Campos Dinámicos (Schema Builder)
-                            st.markdown("##### Constructor de Campos del Formulario (Input Schema)")
-                            
-                            # Mostrar tabla de campos existentes
-                            if len(substage["fields"]) > 0:
-                                for f_idx, field in enumerate(substage["fields"]):
-                                    col_f_name, col_f_title, col_f_type, col_f_req, col_f_del = st.columns([2, 2, 2.5, 1, 0.5])
-                                    with col_f_name:
-                                        st.code(field["name"])
-                                    with col_f_title:
-                                        st.write(f"**{field['title']}**")
-                                    with col_f_type:
-                                        fmt_info = f" ({field.get('format', 'libre')})" if field.get('format') and field.get('format') != 'none' else ""
-                                        mask_info = f" | `{field.get('placeholder')}`" if field.get('placeholder') else ""
-                                        st.caption(f"Tipo: `{field['type']}`{fmt_info}{mask_info}")
-                                    with col_f_req:
-                                        st.write("Obligatorio" if field["required"] else "Opcional")
-                                    with col_f_del:
-                                        if st.button("Eliminar", key=f"del_f_{substage['id']}_{field['id']}"):
-                                            substage["fields"].pop(f_idx)
-                                            st.rerun()
-                            else:
-                                st.caption("No hay campos configurados en esta subetapa. Agrega campos con el botón de abajo.")
-
-                            # Formulario para Agregar Campo
-                            with st.form(f"form_add_field_{substage['id']}", clear_on_submit=True):
-                                st.markdown("**Agregar Nuevo Campo:**")
-                                col_cf1, col_cf2 = st.columns([2, 2])
-                                with col_cf1:
-                                    f_title = st.text_input("Título / Etiqueta del Campo:", placeholder="Ej: RUT del Solicitante", key=f"ft_{substage['id']}")
-                                with col_cf2:
-                                    f_name = st.text_input("Nombre Técnico (JSON Key):", placeholder="Ej: rut_solicitante", key=f"fn_{substage['id']}")
-                                
-                                col_cf3, col_cf4, col_cf5 = st.columns([1.5, 2.5, 1])
-                                with col_cf3:
-                                    f_type = st.selectbox("Tipo de Dato:", ["Texto (String)", "Número", "Fecha", "Booleano", "Archivo / PDF"], key=f"fty_{substage['id']}")
-                                with col_cf4:
-                                    f_format = st.selectbox(
-                                        "Formato / Máscara (para Texto):",
-                                        [
-                                            "Texto Libre (Sin formato)",
-                                            "RUT Chileno (17837734-5 | _ _ _ _ _ _ _ _ - _)",
-                                            "Teléfono (+56 9 _ _ _ _  _ _ _ _)",
-                                            "Correo Electrónico (usuario@dominio.com)",
-                                            "Máscara Personalizada"
-                                        ],
-                                        key=f"ffmt_{substage['id']}"
-                                    )
-                                with col_cf5:
-                                    st.write("")
-                                    st.write("")
-                                    f_req = st.checkbox("Obligatorio", value=True, key=f"fr_{substage['id']}")
-
-                                # Máscara / Placeholder personalizado
-                                col_mask1, col_mask2 = st.columns(2)
-                                with col_mask1:
-                                    f_placeholder_input = st.text_input("Placeholder / Guía visual (ej: _ _ _ _ _ _ _ _ - _):", placeholder="Ej: _ _ _ _ _ _ _ _ - _", key=f"fph_{substage['id']}")
-                                with col_mask2:
-                                    f_mask_regex = st.text_input("Patrón / Regex personalizado (opcional):", placeholder="Ej: ^[0-9]{7,8}-[0-9kK]$", key=f"fmsk_{substage['id']}")
-
-                                submit_field = st.form_submit_button("Guardar Campo", type="secondary")
-                                if submit_field:
-                                    if f_title:
-                                        type_mapping = {
-                                            "Texto (String)": "string",
-                                            "Número": "number",
-                                            "Fecha": "date",
-                                            "Booleano": "boolean",
-                                            "Archivo / PDF": "file"
-                                        }
-                                        
-                                        format_code = "none"
-                                        default_ph = ""
-                                        if "RUT Chileno" in f_format:
-                                            format_code = "rut"
-                                            default_ph = "_ _ _ _ _ _ _ _ - _"
-                                        elif "Teléfono" in f_format:
-                                            format_code = "phone"
-                                            default_ph = "+56 9 _ _ _ _  _ _ _ _"
-                                        elif "Correo" in f_format:
-                                            format_code = "email"
-                                            default_ph = "nombre@empresa.com"
-                                        elif "Personalizada" in f_format:
-                                            format_code = "custom"
-                                            default_ph = f_placeholder_input or "_ _ _ _ _ _ _ _ - _"
-
-                                        new_field = {
-                                            "id": str(uuid.uuid4()),
-                                            "title": f_title,
-                                            "name": f_name if f_name else f_title.lower().replace(" ", "_"),
-                                            "type": type_mapping[f_type],
-                                            "format": format_code,
-                                            "placeholder": f_placeholder_input if f_placeholder_input else default_ph,
-                                            "mask_pattern": f_mask_regex,
-                                            "required": f_req
-                                        }
-                                        substage["fields"].append(new_field)
-                                        st.success(f"Campo '{f_title}' agregado con formato '{format_code}'.")
-                                        st.rerun()
-                                    else:
-                                        st.error("Debes ingresar la etiqueta del campo.")
-
-                # Formulario para Agregar Subetapa a esta Etapa
-                with st.expander(f"Agregar Subetapa a la Etapa {s_idx + 1}: {stage['title']}"):
-                    with st.form(f"form_new_sub_{stage['id']}", clear_on_submit=True):
-                        col_sub1, col_sub2 = st.columns([3, 1])
-                        with col_sub1:
-                            new_sub_title = st.text_input("Nombre de la Subetapa:", placeholder="Ej: Carga de Documentos")
-                        with col_sub2:
-                            new_sub_key = st.text_input("Clave Única:", placeholder="Ej: SUB_CARGA_DOCS")
+                    # Formulario para Agregar Campo
+                    with st.form(f"form_add_field_{substage['id']}", clear_on_submit=True):
+                        st.markdown("**Agregar Nuevo Campo:**")
+                        col_cf1, col_cf2 = st.columns([2, 2])
+                        with col_cf1:
+                            f_title = st.text_input("Título / Etiqueta:", placeholder="Ej: RUT del Solicitante", key=f"ft_{substage['id']}")
+                        with col_cf2:
+                            f_name = st.text_input("Nombre Técnico (JSON Key):", placeholder="Ej: rut_solicitante", key=f"fn_{substage['id']}")
                         
-                        col_sub3, col_sub4 = st.columns(2)
-                        with col_sub3:
-                            new_sub_ed = st.text_input("Rol Editor:", placeholder="ej: operaciones@miempresa.com")
-                        with col_sub4:
-                            new_sub_rev = st.text_input("Rol Revisor:", placeholder="ej: supervisores@miempresa.com")
+                        col_cf3, col_cf4, col_cf5 = st.columns([1.5, 2.5, 1])
+                        with col_cf3:
+                            f_type = st.selectbox("Tipo de Dato:", ["Texto (String)", "Número", "Fecha", "Booleano", "Archivo / PDF"], key=f"fty_{substage['id']}")
+                        with col_cf4:
+                            f_format = st.selectbox(
+                                "Formato / Máscara (para Texto):",
+                                [
+                                    "Texto Libre (Sin formato)",
+                                    "RUT Chileno (17837734-5 | _ _ _ _ _ _ _ _ - _)",
+                                    "Teléfono (+56 9 _ _ _ _  _ _ _ _)",
+                                    "Correo Electrónico (usuario@dominio.com)",
+                                    "Máscara Personalizada"
+                                ],
+                                key=f"ffmt_{substage['id']}"
+                            )
+                        with col_cf5:
+                            st.write("")
+                            st.write("")
+                            f_req = st.checkbox("Obligatorio", value=True, key=f"fr_{substage['id']}")
 
-                        submit_sub = st.form_submit_button("Crear Subetapa", type="primary")
-                        if submit_sub:
-                            if new_sub_title:
-                                key = new_sub_key if new_sub_key else new_sub_title.upper().replace(" ", "_")
-                                new_sub = {
-                                    "id": str(uuid.uuid4()),
-                                    "title": new_sub_title,
-                                    "key": key,
-                                    "editor_role": new_sub_ed,
-                                    "reviewer_role": new_sub_rev,
-                                    "service_key": "",
-                                    "fields": []
+                        col_mask1, col_mask2 = st.columns(2)
+                        with col_mask1:
+                            f_placeholder_input = st.text_input("Guía visual / Placeholder:", placeholder="Ej: _ _ _ _ _ _ _ _ - _", key=f"fph_{substage['id']}")
+                        with col_mask2:
+                            f_mask_regex = st.text_input("Patrón / Regex (opcional):", placeholder="Ej: ^[0-9]{7,8}-[0-9kK]$", key=f"fmsk_{substage['id']}")
+
+                        submit_field = st.form_submit_button("Guardar Campo", type="secondary")
+                        if submit_field:
+                            if f_title:
+                                type_mapping = {
+                                    "Texto (String)": "string",
+                                    "Número": "number",
+                                    "Fecha": "date",
+                                    "Booleano": "boolean",
+                                    "Archivo / PDF": "file"
                                 }
-                                stage["substages"].append(new_sub)
-                                st.success(f"Subetapa '{new_sub_title}' creada.")
+                                
+                                format_code = "none"
+                                default_ph = ""
+                                if "RUT Chileno" in f_format:
+                                    format_code = "rut"
+                                    default_ph = "_ _ _ _ _ _ _ _ - _"
+                                elif "Teléfono" in f_format:
+                                    format_code = "phone"
+                                    default_ph = "+56 9 _ _ _ _  _ _ _ _"
+                                elif "Correo" in f_format:
+                                    format_code = "email"
+                                    default_ph = "nombre@empresa.com"
+                                elif "Personalizada" in f_format:
+                                    format_code = "custom"
+                                    default_ph = f_placeholder_input or "_ _ _ _ _ _ _ _ - _"
+
+                                new_field = {
+                                    "id": str(uuid.uuid4()),
+                                    "title": f_title,
+                                    "name": f_name if f_name else f_title.lower().replace(" ", "_"),
+                                    "type": type_mapping[f_type],
+                                    "format": format_code,
+                                    "placeholder": f_placeholder_input if f_placeholder_input else default_ph,
+                                    "mask_pattern": f_mask_regex,
+                                    "required": f_req
+                                }
+                                substage["fields"].append(new_field)
+                                st.success(f"Campo '{f_title}' agregado.")
                                 st.rerun()
                             else:
-                                st.error("Debes ingresar el nombre de la subetapa.")
+                                st.error("Debes ingresar la etiqueta del campo.")
+
+        # Formulario para Agregar Subetapa a la Etapa Activa
+        with st.expander(f"+ Agregar Nueva Subetapa a '{active_stage['title']}'"):
+            with st.form(f"form_new_sub_{active_stage['id']}", clear_on_submit=True):
+                col_sub1, col_sub2 = st.columns([3, 1])
+                with col_sub1:
+                    new_sub_title = st.text_input("Nombre de la Subetapa:", placeholder="Ej: Carga de Documentación")
+                with col_sub2:
+                    new_sub_key = st.text_input("Clave Única:", placeholder="Ej: SUB_CARGA_DOCS")
+                
+                col_sub3, col_sub4 = st.columns(2)
+                with col_sub3:
+                    new_sub_ed = st.text_input("Rol Editor:", placeholder="ej: operaciones@miempresa.com")
+                with col_sub4:
+                    new_sub_rev = st.text_input("Rol Revisor:", placeholder="ej: supervisores@miempresa.com")
+
+                submit_sub = st.form_submit_button("Crear Subetapa", type="primary")
+                if submit_sub:
+                    if new_sub_title:
+                        key = new_sub_key if new_sub_key else new_sub_title.upper().replace(" ", "_")
+                        new_sub = {
+                            "id": str(uuid.uuid4()),
+                            "title": new_sub_title,
+                            "key": key,
+                            "editor_role": new_sub_ed,
+                            "reviewer_role": new_sub_rev,
+                            "service_key": "",
+                            "fields": []
+                        }
+                        active_stage["substages"].append(new_sub)
+                        st.success(f"Subetapa '{new_sub_title}' creada.")
+                        st.rerun()
+                    else:
+                        st.error("Debes ingresar el nombre de la subetapa.")
 
 # ==============================================================================
 # VISTA 2: PORTAL DE EJECUCIÓN (RUNTIME)
 # ==============================================================================
 elif mode == "Portal de Ejecución (Runtime)":
     st.markdown('<div class="main-header">Portal Operativo de Ejecución</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Ejecución del flujo, revisión por roles, invocación de microservicios y auditoría inmutable.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Ejecución del flujo en serie o paralelo, revisión por roles, invocación de microservicios y auditoría inmutable.</div>', unsafe_allow_html=True)
 
     if len(st.session_state.workflow["stages"]) == 0:
         st.warning("No hay etapas creadas en el workflow. Ve al 'Diseñador de Workflows' y crea al menos una etapa con subetapas.")
@@ -758,6 +757,8 @@ elif mode == "Portal de Ejecución (Runtime)":
                 all_substages.append({
                     "stage_idx": s_idx,
                     "stage_title": stg["title"],
+                    "stage_mode": stg.get("mode", "SERIES"),
+                    "stage_track": stg.get("track", "Principal"),
                     "sub_idx": sub_idx,
                     "substage": sub
                 })
@@ -804,8 +805,9 @@ elif mode == "Portal de Ejecución (Runtime)":
 
             current_stage = stages[exec_state["current_stage_idx"]]
             current_sub = current_stage["substages"][exec_state["current_substage_idx"]]
+            mode_badge = f"[{current_stage.get('mode', 'SERIES')} - {current_stage.get('track', 'Principal')}]"
 
-            st.markdown(f"### Paso Actual: **{current_stage['title']}** → Subetapa: **{current_sub['title']}**")
+            st.markdown(f"### Paso Actual: **{current_stage['title']}** `{mode_badge}` → Subetapa: **{current_sub['title']}**")
             
             role_mode = st.radio(
                 "Simular Acción como Rol:",
