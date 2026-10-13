@@ -526,21 +526,21 @@ def generate_pipeline_svg(stages, selected_idx):
             nx, ny, nw, nh = node["x"], node["y"], node["w"], node["h"]
 
             if ntype == "START":
-                svg_parts.append(f'''
-                <g>
-                    <rect x="{nx}" y="{ny}" width="{nw}" height="{nh}" rx="10" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5" filter="url(#shadow-card)" />
-                    <text x="{nx + nw/2}" y="{ny + 24}" font-size="11" font-weight="700" fill="#0f172a" text-anchor="middle">INICIO</text>
-                    <text x="{nx + nw/2}" y="{ny + 41}" font-size="9.5" fill="#64748b" text-anchor="middle">Disparo</text>
-                </g>
-                ''')
+                svg_parts.append(
+                    f'<g>'
+                    f'<rect x="{nx}" y="{ny}" width="{nw}" height="{nh}" rx="10" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5" filter="url(#shadow-card)" />'
+                    f'<text x="{nx + nw/2}" y="{ny + 24}" font-size="11" font-weight="700" fill="#0f172a" text-anchor="middle">INICIO</text>'
+                    f'<text x="{nx + nw/2}" y="{ny + 41}" font-size="9.5" fill="#64748b" text-anchor="middle">Disparo</text>'
+                    f'</g>'
+                )
             elif ntype == "END":
-                svg_parts.append(f'''
-                <g>
-                    <rect x="{nx}" y="{ny}" width="{nw}" height="{nh}" rx="10" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5" filter="url(#shadow-card)" />
-                    <text x="{nx + nw/2}" y="{ny + 24}" font-size="11" font-weight="700" fill="#0f172a" text-anchor="middle">FIN</text>
-                    <text x="{nx + nw/2}" y="{ny + 41}" font-size="9.5" fill="#64748b" text-anchor="middle">Cierre</text>
-                </g>
-                ''')
+                svg_parts.append(
+                    f'<g>'
+                    f'<rect x="{nx}" y="{ny}" width="{nw}" height="{nh}" rx="10" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5" filter="url(#shadow-card)" />'
+                    f'<text x="{nx + nw/2}" y="{ny + 24}" font-size="11" font-weight="700" fill="#0f172a" text-anchor="middle">FIN</text>'
+                    f'<text x="{nx + nw/2}" y="{ny + 41}" font-size="9.5" fill="#64748b" text-anchor="middle">Cierre</text>'
+                    f'</g>'
+                )
             elif ntype == "STAGE":
                 s_idx = node["stage_idx"]
                 stg = node["stage"]
@@ -576,28 +576,24 @@ def generate_pipeline_svg(stages, selected_idx):
 
                 sel_indicator = ""
                 if is_sel:
-                    sel_indicator = f'''
-                    <rect x="{nx + nw - 75}" y="{ny + 8}" width="68" height="17" rx="4" fill="#2563eb" />
-                    <text x="{nx + nw - 41}" y="{ny + 20}" font-size="8.5" font-weight="700" fill="#ffffff" text-anchor="middle">EDITANDO</text>
-                    '''
+                    sel_indicator = (
+                        f'<rect x="{nx + nw - 75}" y="{ny + 8}" width="68" height="17" rx="4" fill="#2563eb" />'
+                        f'<text x="{nx + nw - 41}" y="{ny + 20}" font-size="8.5" font-weight="700" fill="#ffffff" text-anchor="middle">EDITANDO</text>'
+                    )
 
-                svg_parts.append(f'''
-                <a href="?select_stage={s_idx}" target="_self" style="text-decoration:none; cursor:pointer;">
-                    <g>
-                        <rect x="{nx}" y="{ny}" width="{nw}" height="{nh}" rx="10" fill="{bg_fill}" stroke="{border_color}" stroke-width="{border_width}" {filter_attr} />
-                        <!-- Badge tipo -->
-                        <rect x="{nx + 8}" y="{ny + 8}" width="88" height="17" rx="4" fill="{badge_bg}" />
-                        <text x="{nx + 12}" y="{ny + 20}" font-size="8.5" font-weight="700" fill="{badge_fg}">{badge_label}</text>
-                        {sel_indicator}
-                        <!-- Titulo -->
-                        <text x="{nx + 10}" y="{ny + 44}" font-size="12" font-weight="700" fill="#0f172a">{title_safe}</text>
-                        <!-- Subetapas y servicios -->
-                        <text x="{nx + 10}" y="{ny + 60}" font-size="9.5" fill="#64748b">{sub_label} • {srv_label}</text>
-                        <!-- Hint click -->
-                        <text x="{nx + 10}" y="{ny + 74}" font-size="8" fill="#2563eb" font-weight="600">Pincha para editar ↓</text>
-                    </g>
-                </a>
-                ''')
+                svg_parts.append(
+                    f'<a href="?select_stage={s_idx}" target="_self" style="text-decoration:none; cursor:pointer;">'
+                    f'<g>'
+                    f'<rect x="{nx}" y="{ny}" width="{nw}" height="{nh}" rx="10" fill="{bg_fill}" stroke="{border_color}" stroke-width="{border_width}" {filter_attr} />'
+                    f'<rect x="{nx + 8}" y="{ny + 8}" width="88" height="17" rx="4" fill="{badge_bg}" />'
+                    f'<text x="{nx + 12}" y="{ny + 20}" font-size="8.5" font-weight="700" fill="{badge_fg}">{badge_label}</text>'
+                    f'{sel_indicator}'
+                    f'<text x="{nx + 10}" y="{ny + 44}" font-size="12" font-weight="700" fill="#0f172a">{title_safe}</text>'
+                    f'<text x="{nx + 10}" y="{ny + 60}" font-size="9.5" fill="#64748b">{sub_label} • {srv_label}</text>'
+                    f'<text x="{nx + 10}" y="{ny + 74}" font-size="8" fill="#2563eb" font-weight="600">Pincha para editar ↓</text>'
+                    f'</g>'
+                    f'</a>'
+                )
 
     svg_parts.append('</svg>')
     return "".join(svg_parts), total_w, total_h
@@ -696,23 +692,20 @@ if mode == "Diseñador de Workflows":
         svg_content, total_w, total_h = generate_pipeline_svg(stages, st.session_state.selected_stage_idx)
 
         # Contenedor con overflow-x para desplazarse libremente por el plano sin limitar por el ancho de pantalla
-        st.markdown(f"""
-        <div style="
-            width: 100%;
-            overflow-x: auto;
-            overflow-y: hidden;
-            background: #ffffff;
-            border: 1px solid #cbd5e1;
-            border-radius: 12px;
-            padding: 16px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-            margin: 8px 0 16px 0;
-        ">
-            <div style="min-width: {total_w}px; width: {total_w}px;">
-                {svg_content}
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        canvas_html = (
+            f'<div style="width:100%; overflow-x:auto; overflow-y:hidden; background:#ffffff; '
+            f'border:1px solid #cbd5e1; border-radius:12px; padding:16px; '
+            f'box-shadow:0 1px 3px rgba(0,0,0,0.05); margin:8px 0 16px 0;">'
+            f'<div style="min-width:{total_w}px; width:{total_w}px;">'
+            f'{svg_content}'
+            f'</div>'
+            f'</div>'
+        )
+        if hasattr(st, "html"):
+            st.html(canvas_html)
+        else:
+            clean_canvas = "\n".join(l.strip() for l in canvas_html.splitlines() if l.strip())
+            st.markdown(clean_canvas, unsafe_allow_html=True)
 
         # NAVEGACIÓN Y ACCIONES RÁPIDAS DE ETAPAS
         st.write("**Navegación de Etapas (selecciona para editar):**")
@@ -803,17 +796,25 @@ if mode == "Diseñador de Workflows":
         st.markdown("---")
         active_stage = stages[st.session_state.selected_stage_idx]
 
-        st.markdown(f"""
-        <div id="stage-editor" style="background: linear-gradient(135deg, #1e3a8a, #2563eb); border-radius: 10px; padding: 14px 20px; color: white; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.25); margin: 10px 0 18px 0;">
-            <div>
-                <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.85;">Panel de Edición Activo</div>
-                <div style="font-size: 19px; font-weight: 700; margin-top: 2px;">{active_stage['title']} <span style="font-size: 13px; font-weight: 500; opacity: 0.9;">({active_stage.get('mode', 'SERIES')} • {active_stage.get('track', 'Principal')})</span></div>
-            </div>
-            <div style="background: rgba(255, 255, 255, 0.2); border-radius: 6px; padding: 6px 14px; font-size: 13px; font-weight: 600;">
-                Etapa {st.session_state.selected_stage_idx + 1} de {len(stages)}
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        banner_html = (
+            f'<div id="stage-editor" style="background:linear-gradient(135deg, #1e3a8a, #2563eb); '
+            f'border-radius:10px; padding:14px 20px; color:white; display:flex; justify-content:space-between; '
+            f'align-items:center; box-shadow:0 4px 6px -1px rgba(37, 99, 235, 0.25); margin:10px 0 18px 0;">'
+            f'<div>'
+            f'<div style="font-size:11px; text-transform:uppercase; letter-spacing:0.08em; opacity:0.85;">Panel de Edición Activo</div>'
+            f'<div style="font-size:19px; font-weight:700; margin-top:2px;">{active_stage["title"]} '
+            f'<span style="font-size:13px; font-weight:500; opacity:0.9;">({active_stage.get("mode", "SERIES")} • {active_stage.get("track", "Principal")})</span></div>'
+            f'</div>'
+            f'<div style="background:rgba(255,255,255,0.2); border-radius:6px; padding:6px 14px; font-size:13px; font-weight:600;">'
+            f'Etapa {st.session_state.selected_stage_idx + 1} de {len(stages)}'
+            f'</div>'
+            f'</div>'
+        )
+        if hasattr(st, "html"):
+            st.html(banner_html)
+        else:
+            clean_banner = "\n".join(l.strip() for l in banner_html.splitlines() if l.strip())
+            st.markdown(clean_banner, unsafe_allow_html=True)
 
         col_st_title, col_st_key, col_st_mode, col_st_track = st.columns([3, 2, 2, 2])
         with col_st_title:
