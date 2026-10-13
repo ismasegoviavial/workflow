@@ -2,6 +2,7 @@ import streamlit as st
 import json
 import uuid
 import os
+import html
 from datetime import datetime, date
 
 # Configuración de Página
@@ -369,6 +370,239 @@ with col_btn2:
         st.rerun()
 
 # ==============================================================================
+# GENERADOR DE DIAGRAMA SVG CON CONECTORES REALES Y PLANO NAVEGABLE
+# ==============================================================================
+def generate_pipeline_svg(stages, selected_idx):
+    if not stages:
+        return "", 400, 150
+    steps = []
+    for s_idx, stg in enumerate(stages):
+        is_parallel = (stg.get("mode") == "PARALLEL")
+        if is_parallel and len(steps) > 0 and steps[-1]["type"] == "PARALLEL":
+            steps[-1]["stages"].append((s_idx, stg))
+        else:
+            steps.append({
+                "type": "PARALLEL" if is_parallel else "SERIES",
+                "stages": [(s_idx, stg)]
+            })
+
+    card_w = 205
+    card_h = 86
+    start_end_w = 78
+    start_end_h = 56
+    gap_x = 65
+    gap_y = 20
+
+    max_branches = max([len(st["stages"]) for st in steps] or [1])
+    total_h = max(190, max_branches * card_h + (max_branches - 1) * gap_y + 80)
+    center_y = total_h / 2
+
+    # Posiciones X de columnas
+    col_x = [30]  # INICIO
+    curr_x = 30 + start_end_w + gap_x
+    for st in steps:
+        col_x.append(curr_x)
+        curr_x += card_w + gap_x
+    fin_x = curr_x
+    total_w = fin_x + start_end_w + 40
+
+    col_nodes = []
+
+    # 1. NODO INICIO
+    inicio_y = center_y - start_end_h / 2
+    col_nodes.append([{
+        "type": "START",
+        "x": col_x[0],
+        "y": inicio_y,
+        "w": start_end_w,
+        "h": start_end_h,
+        "in_x": col_x[0],
+        "in_y": center_y,
+        "out_x": col_x[0] + start_end_w,
+        "out_y": center_y,
+    }])
+
+    # 2. NODOS DE ETAPAS
+    for col_idx, step in enumerate(steps):
+        k = len(step["stages"])
+        block_h = k * card_h + (k - 1) * gap_y
+        start_y = center_y - block_h / 2
+        nodes_in_col = []
+        for b_idx, (s_idx, stg) in enumerate(step["stages"]):
+            ny = start_y + b_idx * (card_h + gap_y)
+            nx = col_x[col_idx + 1]
+            nodes_in_col.append({
+                "type": "STAGE",
+                "stage_idx": s_idx,
+                "stage": stg,
+                "x": nx,
+                "y": ny,
+                "w": card_w,
+                "h": card_h,
+                "in_x": nx,
+                "in_y": ny + card_h / 2,
+                "out_x": nx + card_w,
+                "out_y": ny + card_h / 2,
+                "is_selected": (s_idx == selected_idx)
+            })
+        col_nodes.append(nodes_in_col)
+
+    # 3. NODO FIN
+    fin_y = center_y - start_end_h / 2
+    col_nodes.append([{
+        "type": "END",
+        "x": fin_x,
+        "y": fin_y,
+        "w": start_end_w,
+        "h": start_end_h,
+        "in_x": fin_x,
+        "in_y": center_y,
+        "out_x": fin_x + start_end_w,
+        "out_y": center_y
+    }])
+
+    # GENERAR SVG
+    svg_parts = [
+        f'<svg width="{total_w}" height="{total_h}" viewBox="0 0 {total_w} {total_h}" xmlns="http://www.w3.org/2000/svg" style="font-family:system-ui, -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, sans-serif; user-select:none; display:block;">',
+        '<defs>',
+        '  <marker id="arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">',
+        '    <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#64748b" />',
+        '  </marker>',
+        '  <marker id="arrow-blue" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">',
+        '    <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#0284c7" />',
+        '  </marker>',
+        '  <filter id="shadow-active" x="-10%" y="-10%" width="130%" height="130%">',
+        '    <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#2563eb" flood-opacity="0.35" />',
+        '  </filter>',
+        '  <filter id="shadow-card" x="-10%" y="-10%" width="120%" height="120%">',
+        '    <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#0f172a" flood-opacity="0.06" />',
+        '  </filter>',
+        '  <pattern id="grid-dots" width="20" height="20" patternUnits="userSpaceOnUse">',
+        '    <circle cx="2" cy="2" r="1" fill="#cbd5e1" opacity="0.65" />',
+        '  </pattern>',
+        '</defs>',
+        f'<rect width="{total_w}" height="{total_h}" fill="url(#grid-dots)" rx="8" />'
+    ]
+
+    # DIBUJAR CONECTORES ENTRE COLUMNAS CONSECUTIVAS
+    for c in range(len(col_nodes) - 1):
+        from_nodes = col_nodes[c]
+        to_nodes = col_nodes[c + 1]
+
+        if len(from_nodes) == 1 and len(to_nodes) == 1:
+            fn = from_nodes[0]
+            tn = to_nodes[0]
+            if abs(fn["out_y"] - tn["in_y"]) < 2:
+                svg_parts.append(f'<line x1="{fn["out_x"]}" y1="{fn["out_y"]}" x2="{tn["in_x"]}" y2="{tn["in_y"]}" stroke="#64748b" stroke-width="2.5" marker-end="url(#arrow)" />')
+            else:
+                dx = (tn["in_x"] - fn["out_x"]) / 2
+                svg_parts.append(f'<path d="M {fn["out_x"]} {fn["out_y"]} C {fn["out_x"] + dx} {fn["out_y"]}, {tn["in_x"] - dx} {tn["in_y"]}, {tn["in_x"]} {tn["in_y"]}" stroke="#64748b" stroke-width="2.5" fill="none" marker-end="url(#arrow)" />')
+
+        elif len(from_nodes) == 1 and len(to_nodes) > 1:
+            # Bifurcación en paralelo (Fork)
+            fn = from_nodes[0]
+            for tn in to_nodes:
+                dx = (tn["in_x"] - fn["out_x"]) * 0.55
+                svg_parts.append(f'<path d="M {fn["out_x"]} {fn["out_y"]} C {fn["out_x"] + dx} {fn["out_y"]}, {tn["in_x"] - dx} {tn["in_y"]}, {tn["in_x"]} {tn["in_y"]}" stroke="#0284c7" stroke-width="2.5" fill="none" marker-end="url(#arrow-blue)" />')
+
+        elif len(from_nodes) > 1 and len(to_nodes) == 1:
+            # Convergencia de paralelo a serie (Join)
+            tn = to_nodes[0]
+            for fn in from_nodes:
+                dx = (tn["in_x"] - fn["out_x"]) * 0.55
+                svg_parts.append(f'<path d="M {fn["out_x"]} {fn["out_y"]} C {fn["out_x"] + dx} {fn["out_y"]}, {tn["in_x"] - dx} {tn["in_y"]}, {tn["in_x"]} {tn["in_y"]}" stroke="#0284c7" stroke-width="2.5" fill="none" marker-end="url(#arrow-blue)" />')
+
+        else:
+            # Conexión múltiple
+            for fn in from_nodes:
+                for tn in to_nodes:
+                    dx = (tn["in_x"] - fn["out_x"]) * 0.55
+                    svg_parts.append(f'<path d="M {fn["out_x"]} {fn["out_y"]} C {fn["out_x"] + dx} {fn["out_y"]}, {tn["in_x"] - dx} {tn["in_y"]}, {tn["in_x"]} {tn["in_y"]}" stroke="#0284c7" stroke-width="1.8" stroke-dasharray="4" fill="none" marker-end="url(#arrow-blue)" />')
+
+    # DIBUJAR NODOS
+    for col in col_nodes:
+        for node in col:
+            ntype = node["type"]
+            nx, ny, nw, nh = node["x"], node["y"], node["w"], node["h"]
+
+            if ntype == "START":
+                svg_parts.append(f'''
+                <g>
+                    <rect x="{nx}" y="{ny}" width="{nw}" height="{nh}" rx="10" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5" filter="url(#shadow-card)" />
+                    <text x="{nx + nw/2}" y="{ny + 24}" font-size="11" font-weight="700" fill="#0f172a" text-anchor="middle">INICIO</text>
+                    <text x="{nx + nw/2}" y="{ny + 41}" font-size="9.5" fill="#64748b" text-anchor="middle">Disparo</text>
+                </g>
+                ''')
+            elif ntype == "END":
+                svg_parts.append(f'''
+                <g>
+                    <rect x="{nx}" y="{ny}" width="{nw}" height="{nh}" rx="10" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5" filter="url(#shadow-card)" />
+                    <text x="{nx + nw/2}" y="{ny + 24}" font-size="11" font-weight="700" fill="#0f172a" text-anchor="middle">FIN</text>
+                    <text x="{nx + nw/2}" y="{ny + 41}" font-size="9.5" fill="#64748b" text-anchor="middle">Cierre</text>
+                </g>
+                ''')
+            elif ntype == "STAGE":
+                s_idx = node["stage_idx"]
+                stg = node["stage"]
+                is_sel = node["is_selected"]
+                is_par = (stg.get("mode") == "PARALLEL")
+
+                bg_fill = "#eff6ff" if is_sel else ("#f0f9ff" if is_par else "#ffffff")
+                border_color = "#2563eb" if is_sel else ("#0284c7" if is_par else "#cbd5e1")
+                border_width = "2.5" if is_sel else "1.5"
+                filter_attr = 'filter="url(#shadow-active)"' if is_sel else 'filter="url(#shadow-card)"'
+
+                title_safe = html.escape(stg["title"])
+                if len(title_safe) > 22:
+                    title_safe = title_safe[:20] + "..."
+
+                sub_cnt = len(stg["substages"])
+                srv_keys = [s["service_key"] for s in stg["substages"] if s.get("service_key")]
+                sub_label = f"{sub_cnt} Subetapa{'s' if sub_cnt != 1 else ''}"
+                srv_label = f"Srv: {srv_keys[0]}" if len(srv_keys) == 1 else (f"{len(srv_keys)} Servicios" if len(srv_keys) > 1 else "Manual")
+
+                if is_par:
+                    track_txt = html.escape(stg.get("track", "Paralelo"))
+                    badge_bg = "#e0f2fe"
+                    badge_fg = "#0369a1"
+                    badge_label = f"PARALELO: {track_txt}"
+                else:
+                    badge_bg = "#f1f5f9"
+                    badge_fg = "#475569"
+                    badge_label = "SERIE"
+
+                if len(badge_label) > 18:
+                    badge_label = badge_label[:16] + ".."
+
+                sel_indicator = ""
+                if is_sel:
+                    sel_indicator = f'''
+                    <rect x="{nx + nw - 75}" y="{ny + 8}" width="68" height="17" rx="4" fill="#2563eb" />
+                    <text x="{nx + nw - 41}" y="{ny + 20}" font-size="8.5" font-weight="700" fill="#ffffff" text-anchor="middle">EDITANDO</text>
+                    '''
+
+                svg_parts.append(f'''
+                <a href="?select_stage={s_idx}" target="_self" style="text-decoration:none; cursor:pointer;">
+                    <g>
+                        <rect x="{nx}" y="{ny}" width="{nw}" height="{nh}" rx="10" fill="{bg_fill}" stroke="{border_color}" stroke-width="{border_width}" {filter_attr} />
+                        <!-- Badge tipo -->
+                        <rect x="{nx + 8}" y="{ny + 8}" width="88" height="17" rx="4" fill="{badge_bg}" />
+                        <text x="{nx + 12}" y="{ny + 20}" font-size="8.5" font-weight="700" fill="{badge_fg}">{badge_label}</text>
+                        {sel_indicator}
+                        <!-- Titulo -->
+                        <text x="{nx + 10}" y="{ny + 44}" font-size="12" font-weight="700" fill="#0f172a">{title_safe}</text>
+                        <!-- Subetapas y servicios -->
+                        <text x="{nx + 10}" y="{ny + 60}" font-size="9.5" fill="#64748b">{sub_label} • {srv_label}</text>
+                        <!-- Hint click -->
+                        <text x="{nx + 10}" y="{ny + 74}" font-size="8" fill="#2563eb" font-weight="600">Pincha para editar ↓</text>
+                    </g>
+                </a>
+                ''')
+
+    svg_parts.append('</svg>')
+    return "".join(svg_parts), total_w, total_h
+
+# ==============================================================================
 # VISTA 1: DISEÑADOR VISUAL E INTERACTIVO (FOCUSED INSPECTOR)
 # ==============================================================================
 if mode == "Diseñador de Workflows":
@@ -383,33 +617,32 @@ if mode == "Diseñador de Workflows":
 
     stages = st.session_state.workflow["stages"]
 
+    # Sincronizar selección desde click en diagrama SVG (query param 'select_stage')
+    if "select_stage" in st.query_params:
+        try:
+            target_idx = int(st.query_params["select_stage"])
+            if 0 <= target_idx < len(stages):
+                st.session_state.selected_stage_idx = target_idx
+        except Exception:
+            pass
+
     # Validar índice activo
     if len(stages) > 0:
         if st.session_state.selected_stage_idx >= len(stages):
             st.session_state.selected_stage_idx = max(0, len(stages) - 1)
+        active_stage = stages[st.session_state.selected_stage_idx]
+    else:
+        active_stage = None
 
     st.markdown("---")
 
-    # AGRUPAR ETAPAS EN PASOS SECUENCIALES (PIPELINE STEPS)
-    # - Etapa en Serie: forma 1 paso individual (1 tarjeta en su columna).
-    # - Etapas consecutivas en Paralelo: forman un bloque de bifurcación (SE RENDERIZAN VERTICALMENTE, UN CUADRO BAJO EL OTRO!).
-    pipeline_steps = []
-    for s_idx, stg in enumerate(stages):
-        is_parallel = (stg.get("mode") == "PARALLEL")
-        if is_parallel and len(pipeline_steps) > 0 and pipeline_steps[-1]["type"] == "PARALLEL":
-            pipeline_steps[-1]["stages"].append((s_idx, stg))
-        else:
-            pipeline_steps.append({
-                "type": "PARALLEL" if is_parallel else "SERIES",
-                "stages": [(s_idx, stg)]
-            })
-
-    # Botones superiores
-    col_hdr1, col_hdr2, col_hdr3 = st.columns([4, 2, 2])
+    # Botones superiores de adición
+    col_hdr1, col_hdr2, col_hdr3 = st.columns([4.5, 2.5, 2.5])
     with col_hdr1:
-        st.markdown("### Diagrama del Flujo (Pipeline)")
+        st.markdown("### Diagrama del Flujo (Pipeline Conectado)")
+        st.caption("Desplázate horizontalmente por el plano para recorrer el flujo. Haz clic sobre cualquier cuadro para editarlo.")
     with col_hdr2:
-        if st.button("+ Agregar Etapa en Serie", type="secondary"):
+        if st.button("+ Agregar Etapa en Serie", type="secondary", use_container_width=True):
             new_s = {
                 "id": str(uuid.uuid4()),
                 "title": f"Etapa {len(stages) + 1}",
@@ -422,173 +655,167 @@ if mode == "Diseñador de Workflows":
             st.session_state.selected_stage_idx = len(stages) - 1
             st.rerun()
     with col_hdr3:
-        if st.button("+ Agregar Bloque Paralelo", type="secondary"):
-            new_s1 = {
+        btn_par_disabled = (len(stages) == 0)
+        if st.button("+ Añadir Paralelo (bajo nodo actual)", type="secondary", disabled=btn_par_disabled, use_container_width=True, help="Agrega un único bloque concurrente directamente bajo la etapa seleccionada"):
+            curr_idx = st.session_state.selected_stage_idx
+            curr_stg = stages[curr_idx]
+
+            if curr_stg.get("mode") != "PARALLEL":
+                curr_stg["mode"] = "PARALLEL"
+                if not curr_stg.get("track") or curr_stg["track"] == "Principal":
+                    curr_stg["track"] = "Track A"
+                next_letter = "Track B"
+                insert_pos = curr_idx + 1
+            else:
+                blk_start = curr_idx
+                while blk_start > 0 and stages[blk_start - 1].get("mode") == "PARALLEL":
+                    blk_start -= 1
+                blk_end = curr_idx
+                while blk_end < len(stages) - 1 and stages[blk_end + 1].get("mode") == "PARALLEL":
+                    blk_end += 1
+                num_in_blk = blk_end - blk_start + 1
+                next_letter = f"Track {chr(ord('A') + num_in_blk)}" if num_in_blk < 26 else f"Track {num_in_blk + 1}"
+                insert_pos = blk_end + 1
+
+            new_branch = {
                 "id": str(uuid.uuid4()),
-                "title": f"Track A - Etapa {len(stages) + 1}",
-                "key": f"ETAPA_PAR_A_{len(stages) + 1}",
+                "title": f"{next_letter} - Nueva Rama",
+                "key": f"ETAPA_PAR_{next_letter.replace(' ', '_').upper()}_{len(stages) + 1}",
                 "mode": "PARALLEL",
-                "track": "Track A",
+                "track": next_letter,
                 "substages": []
             }
-            new_s2 = {
-                "id": str(uuid.uuid4()),
-                "title": f"Track B - Etapa {len(stages) + 2}",
-                "key": f"ETAPA_PAR_B_{len(stages) + 2}",
-                "mode": "PARALLEL",
-                "track": "Track B",
-                "substages": []
-            }
-            stages.append(new_s1)
-            stages.append(new_s2)
-            st.session_state.selected_stage_idx = len(stages) - 2
+            stages.insert(insert_pos, new_branch)
+            st.session_state.selected_stage_idx = insert_pos
             st.rerun()
 
-    # RENDER DEL DIAGRAMA
+    # RENDER DEL PLANO NAVEGABLE CON CONECTORES
     if len(stages) == 0:
-        st.info("El flujo está vacío. Agrega una etapa arriba o carga el ejemplo desde la barra lateral.")
+        st.info("El flujo está vacío. Agrega una etapa con los botones superiores o carga el ejemplo desde la barra lateral.")
     else:
-        flow_cols = st.columns(len(pipeline_steps) + 2)
+        svg_content, total_w, total_h = generate_pipeline_svg(stages, st.session_state.selected_stage_idx)
 
-        # INICIO
-        with flow_cols[0]:
-            st.markdown("""
-            <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:8px; text-align:center; min-height:115px;">
-                <div style="font-size:11px; font-weight:bold; color:#0f172a; margin-top:20px;">INICIO</div>
-                <div style="font-size:10px; color:#64748b; margin-top:4px;">Disparo</div>
+        # Contenedor con overflow-x para desplazarse libremente por el plano sin limitar por el ancho de pantalla
+        st.markdown(f"""
+        <div style="
+            width: 100%;
+            overflow-x: auto;
+            overflow-y: hidden;
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            margin: 8px 0 16px 0;
+        ">
+            <div style="min-width: {total_w}px; width: {total_w}px;">
+                {svg_content}
             </div>
-            """, unsafe_allow_html=True)
-            st.markdown("<div style='text-align:center; font-size:14px; color:#94a3b8; margin-top:4px;'>→</div>", unsafe_allow_html=True)
+        </div>
+        """, unsafe_allow_html=True)
 
-        # NODOS DE ETAPAS (SERIE O PARALELO CON CUADROS VERTICALES)
-        for step_idx, step in enumerate(pipeline_steps):
-            with flow_cols[step_idx + 1]:
-                if step["type"] == "SERIES":
-                    (s_idx, stg) = step["stages"][0]
-                    is_selected = (s_idx == st.session_state.selected_stage_idx)
-                    card_border = "2px solid #2563eb" if is_selected else "1px solid #cbd5e1"
-                    card_bg = "#eff6ff" if is_selected else "#ffffff"
-                    badge_color = "#1d4ed8" if is_selected else "#475569"
-                    sub_count = len(stg["substages"])
+        # NAVEGACIÓN Y ACCIONES RÁPIDAS DE ETAPAS
+        st.write("**Navegación de Etapas (selecciona para editar):**")
+        pill_cols = st.columns(min(len(stages), 7))
+        for p_idx, s_item in enumerate(stages):
+            is_active = (p_idx == st.session_state.selected_stage_idx)
+            with pill_cols[p_idx % len(pill_cols)]:
+                tag = f"[{s_item.get('track', 'P')}] " if s_item.get("mode") == "PARALLEL" else ""
+                short_title = s_item['title'][:13] + '..' if len(s_item['title']) > 14 else s_item['title']
+                btn_label = f"★ {p_idx+1}. {tag}{short_title}" if is_active else f"{p_idx+1}. {tag}{short_title}"
+                if st.button(btn_label, key=f"nav_pill_{s_item['id']}", type="primary" if is_active else "secondary", use_container_width=True):
+                    st.session_state.selected_stage_idx = p_idx
+                    st.rerun()
 
-                    srv_badges = ""
-                    for sub in stg["substages"]:
-                        if sub.get("service_key"):
-                            srv_badges += f"<div style='font-size:8px; background:#f1f5f9; color:#334155; border:1px solid #cbd5e1; border-radius:3px; padding:1px 2px; margin-top:1px;'>Srv: {sub['service_key']}</div>"
-
-                    st.markdown(f"""
-                    <div style="background:{card_bg}; border:{card_border}; border-radius:8px; padding:8px; min-height:115px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                        <div style="font-size:9px; font-weight:bold; color:{badge_color}; text-transform:uppercase;">SERIE</div>
-                        <div style="font-weight:600; font-size:11px; color:#0f172a; margin:2px 0; line-height:1.2;">{stg['title']}</div>
-                        <div style="font-size:9px; color:#64748b;">{sub_count} Subetapa{'s' if sub_count != 1 else ''}</div>
-                        {srv_badges}
-                    </div>
-                    """, unsafe_allow_html=True)
-
-                    c_sel_btn, c_l, c_r = st.columns([2, 1, 1])
-                    with c_sel_btn:
-                        if st.button("Modificar" if is_selected else "Elegir", key=f"btn_node_{stg['id']}", type="primary" if is_selected else "secondary"):
-                            st.session_state.selected_stage_idx = s_idx
-                            st.rerun()
-                    with c_l:
-                        if st.button("←", key=f"btn_l_{stg['id']}", disabled=(s_idx == 0), help="Mover hacia la izquierda"):
-                            stages[s_idx], stages[s_idx - 1] = stages[s_idx - 1], stages[s_idx]
-                            st.session_state.selected_stage_idx = s_idx - 1
-                            st.rerun()
-                    with c_r:
-                        if st.button("→", key=f"btn_r_{stg['id']}", disabled=(s_idx == len(stages) - 1), help="Mover hacia la derecha"):
-                            stages[s_idx], stages[s_idx + 1] = stages[s_idx + 1], stages[s_idx]
-                            st.session_state.selected_stage_idx = s_idx + 1
-                            st.rerun()
-
+        # Acciones de la etapa activa
+        col_act1, col_act2, col_act3, col_act4, col_act5 = st.columns([3, 2.5, 1.5, 1.5, 2])
+        with col_act1:
+            btn_add_par_lbl = f"+ Rama Paralela bajo '{active_stage['title'][:13]}..'" if len(active_stage['title']) > 13 else f"+ Rama Paralela bajo '{active_stage['title']}'"
+            if st.button(btn_add_par_lbl, key="btn_act_add_par", use_container_width=True, help="Agrega un único bloque bajo esta etapa en el mismo grupo paralelo"):
+                curr_idx = st.session_state.selected_stage_idx
+                curr_stg = stages[curr_idx]
+                if curr_stg.get("mode") != "PARALLEL":
+                    curr_stg["mode"] = "PARALLEL"
+                    if not curr_stg.get("track") or curr_stg["track"] == "Principal":
+                        curr_stg["track"] = "Track A"
+                    next_letter = "Track B"
+                    insert_pos = curr_idx + 1
                 else:
-                    # BLOQUE PARALELO: UN CUADRO BAJO EL OTRO
-                    st.markdown(f"""
-                    <div style="background:#f0f9ff; border: 1.5px dashed #0284c7; border-radius: 8px; padding: 4px; margin-bottom: 6px;">
-                        <div style="font-size:9px; font-weight:bold; color:#0369a1; text-align:center; text-transform:uppercase;">
-                            Bifurcación Paralela ({len(step['stages'])} ramas)
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
+                    blk_start = curr_idx
+                    while blk_start > 0 and stages[blk_start - 1].get("mode") == "PARALLEL":
+                        blk_start -= 1
+                    blk_end = curr_idx
+                    while blk_end < len(stages) - 1 and stages[blk_end + 1].get("mode") == "PARALLEL":
+                        blk_end += 1
+                    num_in_blk = blk_end - blk_start + 1
+                    next_letter = f"Track {chr(ord('A') + num_in_blk)}" if num_in_blk < 26 else f"Track {num_in_blk + 1}"
+                    insert_pos = blk_end + 1
 
-                    for r_idx, (s_idx, stg) in enumerate(step["stages"]):
-                        is_selected = (s_idx == st.session_state.selected_stage_idx)
-                        card_border = "2px solid #2563eb" if is_selected else "1px solid #93c5fd"
-                        card_bg = "#eff6ff" if is_selected else "#ffffff"
-                        badge_color = "#1d4ed8" if is_selected else "#0369a1"
-                        sub_count = len(stg["substages"])
-                        track_label = stg.get("track", f"Track {chr(65 + r_idx)}")
+                new_branch = {
+                    "id": str(uuid.uuid4()),
+                    "title": f"{next_letter} - Nueva Rama",
+                    "key": f"ETAPA_PAR_{next_letter.replace(' ', '_').upper()}_{len(stages) + 1}",
+                    "mode": "PARALLEL",
+                    "track": next_letter,
+                    "substages": []
+                }
+                stages.insert(insert_pos, new_branch)
+                st.session_state.selected_stage_idx = insert_pos
+                st.rerun()
 
-                        srv_badges = ""
-                        for sub in stg["substages"]:
-                            if sub.get("service_key"):
-                                srv_badges += f"<div style='font-size:8px; background:#f1f5f9; color:#334155; border:1px solid #cbd5e1; border-radius:3px; padding:1px 2px; margin-top:1px;'>Srv: {sub['service_key']}</div>"
+        with col_act2:
+            if st.button("+ Insertar Serie después", key="btn_act_add_ser", use_container_width=True):
+                new_s = {
+                    "id": str(uuid.uuid4()),
+                    "title": f"Etapa {len(stages) + 1}",
+                    "key": f"ETAPA_{len(stages) + 1}",
+                    "mode": "SERIES",
+                    "track": "Principal",
+                    "substages": []
+                }
+                stages.insert(st.session_state.selected_stage_idx + 1, new_s)
+                st.session_state.selected_stage_idx += 1
+                st.rerun()
 
-                        # Tarjeta de la rama (Un cuadro bajo el otro)
-                        st.markdown(f"""
-                        <div style="background:{card_bg}; border:{card_border}; border-radius:8px; padding:8px; margin-bottom:4px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                            <div style="font-size:9px; font-weight:bold; color:{badge_color}; text-transform:uppercase;">PARALELO: {track_label}</div>
-                            <div style="font-weight:600; font-size:11px; color:#0f172a; margin:2px 0; line-height:1.2;">{stg['title']}</div>
-                            <div style="font-size:9px; color:#64748b;">{sub_count} Subetapa{'s' if sub_count != 1 else ''}</div>
-                            {srv_badges}
-                        </div>
-                        """, unsafe_allow_html=True)
+        with col_act3:
+            if st.button("← Mover antes", key="btn_act_mov_l", disabled=(st.session_state.selected_stage_idx == 0), use_container_width=True):
+                idx = st.session_state.selected_stage_idx
+                stages[idx], stages[idx - 1] = stages[idx - 1], stages[idx]
+                st.session_state.selected_stage_idx = idx - 1
+                st.rerun()
 
-                        c_sel_btn, c_l, c_r = st.columns([2, 1, 1])
-                        with c_sel_btn:
-                            if st.button("Modificar" if is_selected else "Elegir", key=f"btn_node_{stg['id']}", type="primary" if is_selected else "secondary"):
-                                st.session_state.selected_stage_idx = s_idx
-                                st.rerun()
-                        with c_l:
-                            if st.button("←", key=f"btn_l_{stg['id']}", disabled=(s_idx == 0), help="Mover hacia la izquierda"):
-                                stages[s_idx], stages[s_idx - 1] = stages[s_idx - 1], stages[s_idx]
-                                st.session_state.selected_stage_idx = s_idx - 1
-                                st.rerun()
-                        with c_r:
-                            if st.button("→", key=f"btn_r_{stg['id']}", disabled=(s_idx == len(stages) - 1), help="Mover hacia la derecha"):
-                                stages[s_idx], stages[s_idx + 1] = stages[s_idx + 1], stages[s_idx]
-                                st.session_state.selected_stage_idx = s_idx + 1
-                                st.rerun()
+        with col_act4:
+            if st.button("→ Mover después", key="btn_act_mov_r", disabled=(st.session_state.selected_stage_idx == len(stages) - 1), use_container_width=True):
+                idx = st.session_state.selected_stage_idx
+                stages[idx], stages[idx + 1] = stages[idx + 1], stages[idx]
+                st.session_state.selected_stage_idx = idx + 1
+                st.rerun()
 
-                        if r_idx < len(step["stages"]) - 1:
-                            st.markdown("<div style='text-align:center; font-size:11px; font-weight:bold; color:#0284c7; margin:2px 0;'>↕ EN PARALELO ↕</div>", unsafe_allow_html=True)
-
-                    # Botón para añadir otra rama a este bloque paralelo
-                    if st.button("+ Añadir Rama", key=f"btn_add_branch_{step_idx}", help="Añadir otra etapa concurrente a este bloque"):
-                        last_s_idx = step["stages"][-1][0]
-                        new_branch = {
-                            "id": str(uuid.uuid4()),
-                            "title": f"Track {chr(65 + len(step['stages']))} - Nueva Rama",
-                            "key": f"ETAPA_PAR_{len(stages) + 1}",
-                            "mode": "PARALLEL",
-                            "track": f"Track {chr(65 + len(step['stages']))}",
-                            "substages": []
-                        }
-                        stages.insert(last_s_idx + 1, new_branch)
-                        st.session_state.selected_stage_idx = last_s_idx + 1
-                        st.rerun()
-
-                if step_idx < len(pipeline_steps) - 1:
-                    st.markdown("<div style='text-align:center; font-size:14px; color:#94a3b8; margin-top:4px;'>→</div>", unsafe_allow_html=True)
-
-        # FIN
-        with flow_cols[-1]:
-            st.markdown("""
-            <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:8px; text-align:center; min-height:115px;">
-                <div style="font-size:11px; font-weight:bold; color:#0f172a; margin-top:20px;">FIN</div>
-                <div style="font-size:10px; color:#64748b; margin-top:4px;">Cierre</div>
-            </div>
-            """, unsafe_allow_html=True)
+        with col_act5:
+            if st.button("Eliminar Etapa", key="btn_act_del", use_container_width=True):
+                stages.pop(st.session_state.selected_stage_idx)
+                st.session_state.selected_stage_idx = max(0, st.session_state.selected_stage_idx - 1)
+                st.rerun()
 
         # ==============================================================================
-        # PANEL ENFOCADO DE LA ETAPA SELECCIONADA (SIN CONFUSIONES NI REPETICIONES)
+        # BANNER DE EDICIÓN ACTIVA Y PANEL ENFOCADO DE LA ETAPA SELECCIONADA
         # ==============================================================================
         st.markdown("---")
         active_stage = stages[st.session_state.selected_stage_idx]
-        
-        st.markdown(f"### Modificando: **{active_stage['title']}** (Etapa {st.session_state.selected_stage_idx + 1} de {len(stages)})")
 
-        col_st_title, col_st_key, col_st_mode, col_st_track, col_st_del = st.columns([3, 2, 2, 2, 1])
+        st.markdown(f"""
+        <div id="stage-editor" style="background: linear-gradient(135deg, #1e3a8a, #2563eb); border-radius: 10px; padding: 14px 20px; color: white; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.25); margin: 10px 0 18px 0;">
+            <div>
+                <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.85;">Panel de Edición Activo</div>
+                <div style="font-size: 19px; font-weight: 700; margin-top: 2px;">{active_stage['title']} <span style="font-size: 13px; font-weight: 500; opacity: 0.9;">({active_stage.get('mode', 'SERIES')} • {active_stage.get('track', 'Principal')})</span></div>
+            </div>
+            <div style="background: rgba(255, 255, 255, 0.2); border-radius: 6px; padding: 6px 14px; font-size: 13px; font-weight: 600;">
+                Etapa {st.session_state.selected_stage_idx + 1} de {len(stages)}
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        col_st_title, col_st_key, col_st_mode, col_st_track = st.columns([3, 2, 2, 2])
         with col_st_title:
             active_stage["title"] = st.text_input("Nombre de la Etapa:", value=active_stage["title"], key=f"inp_stg_title_{active_stage['id']}")
         with col_st_key:
@@ -599,6 +826,10 @@ if mode == "Diseñador de Workflows":
             new_mode = "SERIES" if "Serie" in sel_mode else "PARALLEL"
             if new_mode != active_stage.get("mode"):
                 active_stage["mode"] = new_mode
+                if new_mode == "PARALLEL" and active_stage.get("track") == "Principal":
+                    active_stage["track"] = "Track A"
+                elif new_mode == "SERIES":
+                    active_stage["track"] = "Principal"
                 st.rerun()
         with col_st_track:
             if active_stage.get("mode") == "PARALLEL":
@@ -606,13 +837,6 @@ if mode == "Diseñador de Workflows":
             else:
                 active_stage["track"] = "Principal"
                 st.text_input("Track:", value="Principal (Serie)", disabled=True)
-        with col_st_del:
-            st.write("")
-            st.write("")
-            if st.button("Eliminar Etapa", key=f"btn_del_active_{active_stage['id']}"):
-                stages.pop(st.session_state.selected_stage_idx)
-                st.session_state.selected_stage_idx = max(0, st.session_state.selected_stage_idx - 1)
-                st.rerun()
 
         # SUBETAPAS DE LA ETAPA SELECCIONADA
         st.markdown("#### Subetapas")
