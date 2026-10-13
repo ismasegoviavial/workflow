@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import json
 import uuid
 import os
@@ -582,9 +583,9 @@ def generate_pipeline_svg(stages, selected_idx):
                     )
 
                 svg_parts.append(
-                    f'<a href="?select_stage={s_idx}" target="_self" style="text-decoration:none; cursor:pointer;">'
-                    f'<g>'
-                    f'<rect x="{nx}" y="{ny}" width="{nw}" height="{nh}" rx="10" fill="{bg_fill}" stroke="{border_color}" stroke-width="{border_width}" {filter_attr} />'
+                    f'<a href="?select_stage={s_idx}" target="_parent" style="text-decoration:none; cursor:pointer;">'
+                    f'<g class="stage-card">'
+                    f'<rect class="card-bg" x="{nx}" y="{ny}" width="{nw}" height="{nh}" rx="10" fill="{bg_fill}" stroke="{border_color}" stroke-width="{border_width}" {filter_attr} />'
                     f'<rect x="{nx + 8}" y="{ny + 8}" width="88" height="17" rx="4" fill="{badge_bg}" />'
                     f'<text x="{nx + 12}" y="{ny + 20}" font-size="8.5" font-weight="700" fill="{badge_fg}">{badge_label}</text>'
                     f'{sel_indicator}'
@@ -691,21 +692,43 @@ if mode == "Diseñador de Workflows":
     else:
         svg_content, total_w, total_h = generate_pipeline_svg(stages, st.session_state.selected_stage_idx)
 
-        # Contenedor con overflow-x para desplazarse libremente por el plano sin limitar por el ancho de pantalla
-        canvas_html = (
-            f'<div style="width:100%; overflow-x:auto; overflow-y:hidden; background:#ffffff; '
-            f'border:1px solid #cbd5e1; border-radius:12px; padding:16px; '
-            f'box-shadow:0 1px 3px rgba(0,0,0,0.05); margin:8px 0 16px 0;">'
-            f'<div style="min-width:{total_w}px; width:{total_w}px;">'
-            f'{svg_content}'
-            f'</div>'
-            f'</div>'
-        )
-        if hasattr(st, "html"):
-            st.html(canvas_html)
-        else:
-            clean_canvas = "\n".join(l.strip() for l in canvas_html.splitlines() if l.strip())
-            st.markdown(clean_canvas, unsafe_allow_html=True)
+        # Contenedor iframe interactivo: renderiza SVG sin sanitización y con scroll horizontal libre
+        iframe_doc = f"""<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * {{ box-sizing: border-box; }}
+  body {{
+    margin: 0;
+    padding: 6px;
+    background: transparent;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }}
+  .canvas-wrapper {{
+    min-width: {total_w}px;
+    width: {total_w}px;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    padding: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }}
+  .stage-card:hover .card-bg {{
+    stroke: #2563eb !important;
+    stroke-width: 2.8px !important;
+  }}
+</style>
+</head>
+<body>
+  <div class="canvas-wrapper">
+    {svg_content}
+  </div>
+</body>
+</html>"""
+        components.html(iframe_doc, height=int(total_h + 45), scrolling=True)
 
         # NAVEGACIÓN Y ACCIONES RÁPIDAS DE ETAPAS
         st.write("**Navegación de Etapas (selecciona para editar):**")
