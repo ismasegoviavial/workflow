@@ -53,3 +53,20 @@ export interface ExecutionState {
   context_data: Record<string, any>;
   iteration: number;
 }
+
+export type FusionNodeType = 'source' | 'transform' | 'sink' | 'condition';
+
+export interface FusionNodeData {
+  label: string;
+  stageKey: string;
+  subTitle?: string;
+  nodeType: FusionNodeType;
+  serviceKey?: string;
+  serviceName?: string;
+  substages: Substage[];
+  badgeCount?: number;
+  isInitial?: boolean;
+  isFinal?: boolean;
+  onConfigure?: (nodeId: string) => void;
+  onDelete?: (nodeId: string) => void;
+}

@@ -420,6 +420,7 @@ ROLES_DEF = {
         "name": "Administrador del Sistema",
         "role_badge": "ADMINISTRADOR",
         "allowed_views": [
+            "✨ Cloud Data Fusion Studio (React Flow)",
             "Portal del Cliente (Front-End)",
             "Bandeja de Operaciones (Revisión)",
             "Diseñador de Workflows",
@@ -719,9 +720,37 @@ def generate_pipeline_svg(stages, selected_idx):
     return "".join(svg_parts), total_w, total_h
 
 # ==============================================================================
+# VISTA: CLOUD DATA FUSION STUDIO (REACT FLOW 18)
+# ==============================================================================
+if mode == "✨ Cloud Data Fusion Studio (React Flow)":
+    st.markdown("""
+        <div style="background:#1a73e8; color:white; padding:12px 18px; border-radius:6px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; box-shadow:0 2px 4px rgba(0,0,0,0.12);">
+            <div style="display:flex; align-items:center; gap:12px;">
+                <div style="background:rgba(255,255,255,0.2); width:32px; height:32px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:12px;">CDF</div>
+                <div>
+                    <div style="font-weight:700; font-size:15px; letter-spacing:0.3px;">Google Cloud Data Fusion | Pipeline Studio</div>
+                    <div style="font-size:11.5px; opacity:0.92;">Lienzo interactivo @xyflow/react: arrastra microservicios desde la izquierda, conecta puertos S-Curve y configura subetapas.</div>
+                </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+                <span style="background:#34a853; font-size:11px; padding:3px 10px; border-radius:12px; font-weight:700;">REACT 18</span>
+                <span style="background:rgba(255,255,255,0.2); font-size:11px; padding:3px 10px; border-radius:12px; font-weight:500;">LIVE STUDIO</span>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+
+    studio_path = os.path.join(os.path.dirname(__file__), "static_studio.html")
+    if os.path.exists(studio_path):
+        with open(studio_path, "r", encoding="utf-8") as f:
+            studio_html = f.read()
+        components.html(studio_html, height=890, scrolling=False)
+    else:
+        st.error("No se encontró el archivo compilado `static_studio.html`. Ejecuta `bundle.py` en `apps/web-builder`.")
+
+# ==============================================================================
 # VISTA 1: DISEÑADOR VISUAL E INTERACTIVO (FOCUSED INSPECTOR)
 # ==============================================================================
-if mode == "Diseñador de Workflows":
+elif mode == "Diseñador de Workflows":
     st.markdown('<div class="main-header">Diseñador de Workflows</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Selecciona cualquier etapa del diagrama para modificarla directamente en el panel inferior.</div>', unsafe_allow_html=True)
 
