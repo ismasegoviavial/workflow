@@ -4,7 +4,7 @@ import {
   Minus, 
   Maximize2, 
   RotateCcw, 
-  MapPin
+  Map
 } from 'lucide-react';
 import { useReactFlow } from '@xyflow/react';
 
@@ -42,7 +42,7 @@ export const FloatingControls: React.FC<FloatingControlsProps> = ({
       <button
         onClick={() => fitView({ padding: 0.2, duration: 350 })}
         className="p-1.5 hover:bg-gray-100 rounded text-gray-700 transition-colors"
-        title="Encuadrar en pantalla"
+        title="Encuadrar todo el flujo en pantalla"
       >
         <Maximize2 className="w-4 h-4" />
       </button>
@@ -50,15 +50,15 @@ export const FloatingControls: React.FC<FloatingControlsProps> = ({
       <button
         onClick={onToggleMinimap}
         className={`p-1.5 rounded transition-colors ${showMinimap ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-100 text-gray-700'}`}
-        title="Mostrar / Ocultar minimapa"
+        title="Mostrar / Ocultar vista panorámica (Minimapa)"
       >
-        <MapPin className="w-4 h-4" />
+        <Map className="w-4 h-4" />
       </button>
 
       <button
         onClick={() => fitView({ duration: 300 })}
         className="p-1.5 hover:bg-gray-100 rounded text-gray-700 transition-colors"
-        title="Restablecer vista"
+        title="Restablecer centro"
       >
         <RotateCcw className="w-4 h-4" />
       </button>

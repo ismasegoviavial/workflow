@@ -409,6 +409,26 @@ function StudioContent() {
     showToast('Archivo JSON exportado');
   };
 
+  const handleClearAll = () => {
+    if (nodes.length === 0) {
+      showToast('El lienzo ya está vacío');
+      return;
+    }
+    if (window.confirm('¿Seguro que deseas vaciar todo el lienzo? Se borrarán todas las etapas y conexiones.')) {
+      setNodes([]);
+      setEdges([]);
+      localStorage.removeItem('workflow_pipeline_studio');
+      showToast('Lienzo vaciado correctamente');
+    }
+  };
+
+  const handleLoadExample = () => {
+    setNodes(INITIAL_NODES);
+    setEdges(INITIAL_EDGES);
+    showToast('Flujo modelo cargado en el lienzo');
+    setTimeout(() => fitView({ padding: 0.25, duration: 400 }), 50);
+  };
+
   const selectedNode = nodes.find(n => n.id === selectedNodeId);
 
   return (
@@ -424,6 +444,8 @@ function StudioContent() {
         onExport={handleExport}
         onQuickAdd={handleQuickAdd}
         onAutoLayout={handleAutoLayout}
+        onClearAll={handleClearAll}
+        onLoadExample={handleLoadExample}
       />
 
       {/* 3. Main Workspace: Left Palette + Studio Canvas */}

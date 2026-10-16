@@ -4,8 +4,8 @@ import {
   Save, 
   Download, 
   Sparkles, 
-  Layers, 
-  SlidersHorizontal,
+  Trash2, 
+  RotateCcw,
   Workflow
 } from 'lucide-react';
 
@@ -19,6 +19,8 @@ interface PipelineToolbarProps {
   onExport: () => void;
   onQuickAdd: () => void;
   onAutoLayout: () => void;
+  onClearAll: () => void;
+  onLoadExample: () => void;
   saving?: boolean;
 }
 
@@ -32,6 +34,8 @@ export const PipelineToolbar: React.FC<PipelineToolbarProps> = ({
   onExport,
   onQuickAdd,
   onAutoLayout,
+  onClearAll,
+  onLoadExample,
   saving = false
 }) => {
   return (
@@ -63,7 +67,7 @@ export const PipelineToolbar: React.FC<PipelineToolbarProps> = ({
       </div>
 
       {/* Right: Functional Action Buttons */}
-      <div className="flex items-center space-x-2">
+      <div className="flex items-center space-x-1.5">
         <button
           onClick={onQuickAdd}
           className="flex items-center space-x-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded-md text-xs font-semibold transition-colors"
@@ -75,11 +79,29 @@ export const PipelineToolbar: React.FC<PipelineToolbarProps> = ({
 
         <button
           onClick={onAutoLayout}
-          className="flex items-center space-x-1.5 px-3 py-1.5 bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-200 rounded-md text-xs font-medium transition-colors"
+          className="flex items-center space-x-1 px-2.5 py-1.5 bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-200 rounded-md text-xs font-medium transition-colors"
           title="Reorganizar nodos en orden secuencial"
         >
           <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-          <span>Auto-Ordenar</span>
+          <span>Ordenar</span>
+        </button>
+
+        <button
+          onClick={onLoadExample}
+          className="flex items-center space-x-1 px-2.5 py-1.5 bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-200 rounded-md text-xs font-medium transition-colors"
+          title="Cargar un flujo modelo de ejemplo"
+        >
+          <RotateCcw className="w-3.5 h-3.5 text-blue-600" />
+          <span>Cargar Ejemplo</span>
+        </button>
+
+        <button
+          onClick={onClearAll}
+          className="flex items-center space-x-1 px-2.5 py-1.5 text-gray-600 hover:text-red-600 hover:bg-red-50 border border-transparent hover:border-red-200 rounded-md text-xs font-medium transition-colors"
+          title="Vaciar todo el lienzo y comenzar en blanco"
+        >
+          <Trash2 className="w-3.5 h-3.5 text-red-500" />
+          <span>Vaciar Todo</span>
         </button>
 
         <div className="h-5 w-px bg-gray-200 mx-1" />
