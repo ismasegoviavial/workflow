@@ -10,7 +10,7 @@ from datetime import datetime, date
 st.set_page_config(
     page_title="Workflow Studio | Cloud Engine",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
 # ==============================================================================
@@ -310,6 +310,26 @@ if "execution" not in st.session_state:
 # Estilos CSS Corporativos
 st.markdown("""
 <style>
+    /* 1. Ocultar barra lateral de Streamlit por completo para máxima amplitud */
+    [data-testid="stSidebar"], section[data-testid="stSidebar"] {
+        display: none !important;
+    }
+    [data-testid="stSidebarCollapsedControl"], [data-testid="collapsedControl"] {
+        display: none !important;
+    }
+    header[data-testid="stHeader"] {
+        display: none !important;
+    }
+
+    /* 2. Maximizar el ancho y optimizar paddings */
+    .block-container {
+        padding-top: 0.6rem !important;
+        padding-bottom: 0.5rem !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+        max-width: 100% !important;
+    }
+
     .main-header {
         font-size: 1.3rem;
         font-weight: 700;
@@ -320,6 +340,50 @@ st.markdown("""
         font-size: 0.82rem;
         color: #64748b;
         margin-bottom: 1rem;
+    }
+
+    /* 3. Estilo de Pestañas / Barra Horizontal para st.radio */
+    div[data-testid="stRadio"] {
+        margin-bottom: 8px !important;
+    }
+    div[data-testid="stRadio"] > div[role="radiogroup"] {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        gap: 6px !important;
+        align-items: center !important;
+    }
+    div[data-testid="stRadio"] > div[role="radiogroup"] > label {
+        background: #f8fafc !important;
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 8px !important;
+        padding: 6px 14px !important;
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        color: #475569 !important;
+        cursor: pointer !important;
+        transition: all 0.15s ease-in-out !important;
+        margin-bottom: 0 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+    }
+    div[data-testid="stRadio"] > div[role="radiogroup"] > label:hover {
+        background: #f1f5f9 !important;
+        border-color: #cbd5e1 !important;
+        color: #0f172a !important;
+    }
+    div[data-testid="stRadio"] > div[role="radiogroup"] > label[data-checked="true"],
+    div[data-testid="stRadio"] > div[role="radiogroup"] > label:has(input:checked) {
+        background: #0f172a !important;
+        color: #ffffff !important;
+        border-color: #0f172a !important;
+        box-shadow: 0 2px 4px rgba(15, 23, 42, 0.15) !important;
+    }
+    div[data-testid="stRadio"] > div[role="radiogroup"] > label:has(input:checked) * {
+        color: #ffffff !important;
+    }
+    div[data-testid="stRadio"] > div[role="radiogroup"] > label > div:first-child {
+        display: none !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -400,7 +464,7 @@ ROLES_DEF = {
         "name": "Juan Pérez González",
         "role_badge": "CLIENTE",
         "allowed_views": [
-            "Portal del Cliente (Ejecutar Trámite)",
+            "Portal del Cliente (Front-End)",
             "Seguimiento de Mi Solicitud"
         ]
     },
@@ -411,7 +475,7 @@ ROLES_DEF = {
         "role_badge": "OPERADOR",
         "allowed_views": [
             "Bandeja de Operaciones (Revisión)",
-            "Portal del Cliente (Vista Previa)"
+            "Portal del Cliente (Front-End)"
         ]
     },
     "ADMIN": {
@@ -433,62 +497,95 @@ ROLES_DEF = {
 if "auth_user_key" not in st.session_state:
     st.session_state.auth_user_key = "ADMIN"
 
-st.sidebar.markdown("### Perfil de Acceso")
-selected_role_key = st.sidebar.selectbox(
-    "Acceder como:",
-    options=["ADMIN", "CLIENTE", "OPERADOR"],
-    format_func=lambda k: f"{'⚙️' if k=='ADMIN' else ('👤' if k=='CLIENTE' else '🛡️')} {ROLES_DEF[k]['label']}",
-    index=["ADMIN", "CLIENTE", "OPERADOR"].index(st.session_state.auth_user_key),
-    help="Cambia entre la Consola de Administración, Portal del Cliente o Bandeja de Operaciones"
-)
-st.session_state.auth_user_key = selected_role_key
-current_user = ROLES_DEF[selected_role_key]
+# ==============================================================================
+# BARRA DE TAREAS SUPERIOR HORIZONTAL (HEADER Y NAVEGACIÓN)
+# ==============================================================================
+with st.container():
+    col_brand, col_role, col_user, col_actions = st.columns([2.8, 2.6, 3.0, 2.2])
 
-st.sidebar.caption(f"**Usuario:** `{current_user['name']}`  \n**Email:** `{current_user['email']}`")
-st.sidebar.divider()
+    with col_brand:
+        st.markdown("""
+        <div style="display:flex; align-items:center; gap:8px; padding-top:2px;">
+            <div style="background:#0f172a; color:#38bdf8; width:34px; height:34px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:16px;">⚡</div>
+            <div>
+                <div style="font-size:14.5px; font-weight:700; color:#0f172a; line-height:1.2;">Workflow Studio</div>
+                <div style="font-size:10.5px; color:#64748b;">Cloud Engine • Empresa Demo</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
-views_for_role = current_user["allowed_views"]
-if "active_view" not in st.session_state or st.session_state.active_view not in views_for_role:
-    st.session_state.active_view = views_for_role[0]
+    with col_role:
+        selected_role_key = st.selectbox(
+            "Perfil de Acceso:",
+            options=["ADMIN", "CLIENTE", "OPERADOR"],
+            format_func=lambda k: f"{'⚙️' if k=='ADMIN' else ('👤' if k=='CLIENTE' else '🛡️')} {ROLES_DEF[k]['label']}",
+            index=["ADMIN", "CLIENTE", "OPERADOR"].index(st.session_state.auth_user_key),
+            help="Cambia entre la Consola de Administración, Portal del Cliente o Bandeja de Operaciones",
+            label_visibility="collapsed"
+        )
+        st.session_state.auth_user_key = selected_role_key
+        current_user = ROLES_DEF[selected_role_key]
 
-mode = st.sidebar.radio(
-    "Navegación:",
-    views_for_role,
-    index=views_for_role.index(st.session_state.active_view) if st.session_state.active_view in views_for_role else 0
-)
-st.session_state.active_view = mode
+    with col_user:
+        badge_bg = '#f1f5f9' if selected_role_key=='ADMIN' else ('#dbeafe' if selected_role_key=='CLIENTE' else '#fef3c7')
+        badge_fg = '#0f172a' if selected_role_key=='ADMIN' else ('#1e40af' if selected_role_key=='CLIENTE' else '#92400e')
+        st.markdown(f"""
+        <div style="display:flex; align-items:center; justify-content:flex-end; gap:8px; padding-top:4px;">
+            <div style="text-align:right;">
+                <div style="font-size:12px; font-weight:700; color:#1e293b;">{current_user['name']}</div>
+                <div style="font-size:10.5px; color:#64748b;">{current_user['email']}</div>
+            </div>
+            <span style="background:{badge_bg}; color:{badge_fg}; font-size:10.5px; font-weight:700; padding:3px 8px; border-radius:6px; border:1px solid #cbd5e1;">
+                {current_user['role_badge']}
+            </span>
+            <span style="background:#e0f2fe; color:#0369a1; font-size:10.5px; font-weight:700; padding:3px 8px; border-radius:6px; border:1px solid #bae6fd;">
+                APIs: {len(st.session_state.microservices)}
+            </span>
+        </div>
+        """, unsafe_allow_html=True)
 
-# Opciones de administración adicionales en la barra lateral si es Admin
-if selected_role_key == "ADMIN":
-    st.sidebar.divider()
-    st.sidebar.markdown(f"**Microservicios en Catálogo:** `{len(st.session_state.microservices)}`")
-    col_btn1, col_btn2 = st.sidebar.columns(2)
-    with col_btn1:
-        if st.button("Cargar Ejemplo", help="Cargar flujo de ejemplo"):
-            st.session_state.workflow["stages"] = json.loads(json.dumps(EXAMPLE_STAGES))
-            st.session_state.selected_stage_idx = 0
-            st.session_state.execution["status"] = "NOT_STARTED"
-            st.session_state.execution["current_stage_idx"] = 0
-            st.session_state.execution["current_substage_idx"] = 0
-            st.session_state.execution["form_data"] = {}
-            st.success("Ejemplo cargado.")
-            st.rerun()
+    with col_actions:
+        if selected_role_key == "ADMIN":
+            ca1, ca2 = st.columns(2)
+            with ca1:
+                if st.button("Cargar Ejemplo", help="Cargar flujo de ejemplo", key="btn_load_example_top", use_container_width=True):
+                    st.session_state.workflow["stages"] = json.loads(json.dumps(EXAMPLE_STAGES))
+                    st.session_state.selected_stage_idx = 0
+                    st.session_state.execution["status"] = "NOT_STARTED"
+                    st.session_state.execution["current_stage_idx"] = 0
+                    st.session_state.execution["current_substage_idx"] = 0
+                    st.session_state.execution["form_data"] = {}
+                    st.success("Ejemplo cargado.")
+                    st.rerun()
+            with ca2:
+                if st.button("Vaciar Todo", help="Dejar el flujo en blanco", key="btn_clear_all_top", use_container_width=True):
+                    st.session_state.workflow["stages"] = []
+                    st.session_state.selected_stage_idx = 0
+                    st.session_state.execution = {
+                        "code": f"EXEC-{datetime.utcnow().year}-00001",
+                        "status": "NOT_STARTED",
+                        "current_stage_idx": 0,
+                        "current_substage_idx": 0,
+                        "iteration": 1,
+                        "form_data": {},
+                        "context_data": {},
+                        "audit_logs": []
+                    }
+                    st.rerun()
 
-    with col_btn2:
-        if st.button("Vaciar Todo", help="Dejar el flujo en blanco"):
-            st.session_state.workflow["stages"] = []
-            st.session_state.selected_stage_idx = 0
-            st.session_state.execution = {
-                "code": f"EXEC-{datetime.utcnow().year}-00001",
-                "status": "NOT_STARTED",
-                "current_stage_idx": 0,
-                "current_substage_idx": 0,
-                "iteration": 1,
-                "form_data": {},
-                "context_data": {},
-                "audit_logs": []
-            }
-            st.rerun()
+    # Fila 2: Barra de navegación horizontal por pestañas
+    views_for_role = current_user["allowed_views"]
+    if "active_view" not in st.session_state or st.session_state.active_view not in views_for_role:
+        st.session_state.active_view = views_for_role[0]
+
+    mode = st.radio(
+        "Navegación:",
+        options=views_for_role,
+        index=views_for_role.index(st.session_state.active_view),
+        horizontal=True,
+        label_visibility="collapsed"
+    )
+    st.session_state.active_view = mode
 
 # ==============================================================================
 # VISTA 1: DISEÑADOR DE WORKFLOWS (STUDIO VISUAL INTERACTIVO)
@@ -823,7 +920,7 @@ elif mode in ["Portal del Cliente (Ejecutar Trámite)", "Portal del Cliente (Fro
             </div>
             """, unsafe_allow_html=True)
             
-            st.info("💡 **Información para el Operador:** Para evaluar y aprobar esta solicitud, cambia el selector de perfil a **'Operador / Revisor Interno'** en la barra lateral izquierda.")
+            st.info("💡 **Información para el Operador:** Para evaluar y aprobar esta solicitud, cambia el selector de perfil a **'Operador / Revisor Interno'** en la barra de tareas superior.")
 
         # CASO 3: EN EDICIÓN POR EL CLIENTE
         else:
