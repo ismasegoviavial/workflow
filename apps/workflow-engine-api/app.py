@@ -420,10 +420,11 @@ ROLES_DEF = {
         "name": "Administrador del Sistema",
         "role_badge": "ADMINISTRADOR",
         "allowed_views": [
+            "Diseñador de Workflows",
+            "Portal de Ejecución (Runtime)",
             "✨ Cloud Data Fusion Studio (React Flow)",
             "Portal del Cliente (Front-End)",
             "Bandeja de Operaciones (Revisión)",
-            "Diseñador de Workflows",
             "Fábrica de APIs con IA",
             "Catálogo de Microservicios"
         ]
@@ -431,15 +432,15 @@ ROLES_DEF = {
 }
 
 if "auth_user_key" not in st.session_state:
-    st.session_state.auth_user_key = "CLIENTE"
+    st.session_state.auth_user_key = "ADMIN"
 
 st.sidebar.markdown("### Perfil de Acceso")
 selected_role_key = st.sidebar.selectbox(
     "Acceder como:",
-    options=["CLIENTE", "OPERADOR", "ADMIN"],
-    format_func=lambda k: f"{'👤' if k=='CLIENTE' else ('🛡️' if k=='OPERADOR' else '⚙️')} {ROLES_DEF[k]['label']}",
-    index=["CLIENTE", "OPERADOR", "ADMIN"].index(st.session_state.auth_user_key),
-    help="Cambia entre el Portal del Cliente, Bandeja de Operaciones o Consola de Administración"
+    options=["ADMIN", "CLIENTE", "OPERADOR"],
+    format_func=lambda k: f"{'⚙️' if k=='ADMIN' else ('👤' if k=='CLIENTE' else '🛡️')} {ROLES_DEF[k]['label']}",
+    index=["ADMIN", "CLIENTE", "OPERADOR"].index(st.session_state.auth_user_key),
+    help="Cambia entre la Consola de Administración, Portal del Cliente o Bandeja de Operaciones"
 )
 st.session_state.auth_user_key = selected_role_key
 current_user = ROLES_DEF[selected_role_key]
@@ -1212,6 +1213,235 @@ elif mode == "Diseñador de Workflows":
                         st.rerun()
                     else:
                         st.error("Debes ingresar el nombre de la subetapa.")
+
+# ==============================================================================
+# VISTA 2: PORTAL DE EJECUCIÓN (RUNTIME)
+# ==============================================================================
+elif mode == "Portal de Ejecución (Runtime)":
+    st.markdown('<div class="main-header">Portal Operativo de Ejecución</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Ejecución del flujo en serie o paralelo, revisión por roles, invocación de microservicios y auditoría inmutable.</div>', unsafe_allow_html=True)
+
+    if len(st.session_state.workflow["stages"]) == 0:
+        st.warning("No hay etapas creadas en el workflow. Ve al 'Diseñador de Workflows' y crea al menos una etapa con subetapas.")
+    else:
+        stages = st.session_state.workflow["stages"]
+        
+        all_substages = []
+        for s_idx, stg in enumerate(stages):
+            for sub_idx, sub in enumerate(stg["substages"]):
+                all_substages.append({
+                    "stage_idx": s_idx,
+                    "stage_title": stg["title"],
+                    "stage_mode": stg.get("mode", "SERIES"),
+                    "stage_track": stg.get("track", "Principal"),
+                    "sub_idx": sub_idx,
+                    "substage": sub
+                })
+
+        if len(all_substages) == 0:
+            st.warning("Las etapas creadas no contienen subetapas. Agrega subetapas en el Diseñador.")
+        else:
+            exec_state = st.session_state.execution
+            col_ex1, col_ex2, col_ex3 = st.columns([2, 2, 1])
+            with col_ex1:
+                st.info(f"**Clave de Ejecución:** `{exec_state['code']}`")
+            with col_ex2:
+                status_labels = {
+                    "NOT_STARTED": "No Iniciada",
+                    "IN_PROGRESS": "En Edición",
+                    "IN_REVIEW": "En Revisión",
+                    "COMPLETED": "Completada"
+                }
+                st.info(f"**Estado:** {status_labels.get(exec_state['status'], exec_state['status'])} | **Iteración:** `{exec_state['iteration']}`")
+            with col_ex3:
+                can_rollback = not (exec_state["current_stage_idx"] == 0 and exec_state["current_substage_idx"] == 0)
+                if st.button("Volver (Rollback)", disabled=not can_rollback, type="secondary"):
+                    if can_rollback:
+                        current_flat_idx = 0
+                        for i, item in enumerate(all_substages):
+                            if item["stage_idx"] == exec_state["current_stage_idx"] and item["sub_idx"] == exec_state["current_substage_idx"]:
+                                current_flat_idx = i
+                                break
+                        
+                        prev_item = all_substages[max(0, current_flat_idx - 1)]
+                        exec_state["current_stage_idx"] = prev_item["stage_idx"]
+                        exec_state["current_substage_idx"] = prev_item["sub_idx"]
+                        exec_state["iteration"] += 1
+                        exec_state["status"] = "IN_PROGRESS"
+                        
+                        exec_state["audit_logs"].append({
+                            "timestamp": datetime.now().strftime("%H:%M:%S"),
+                            "action": "ROLLBACK_TRIGGERED",
+                            "user": "operador@miempresa.com",
+                            "notes": f"Retroceso a {prev_item['substage']['title']} (Iteración {exec_state['iteration']})"
+                        })
+                        st.warning(f"Retroceso aplicado hacia: {prev_item['substage']['title']} (Iteración {exec_state['iteration']})")
+                        st.rerun()
+
+            current_stage = stages[exec_state["current_stage_idx"]]
+            current_sub = current_stage["substages"][exec_state["current_substage_idx"]]
+            mode_badge = f"[{current_stage.get('mode', 'SERIES')} - {current_stage.get('track', 'Principal')}]"
+
+            st.markdown(f"### Paso Actual: **{current_stage['title']}** `{mode_badge}` → Subetapa: **{current_sub['title']}**")
+            
+            role_mode = st.radio(
+                "Simular Acción como Rol:",
+                [f"Editor ({current_sub['editor_role'] or 'operaciones@miempresa.com'})", 
+                 f"Revisor ({current_sub['reviewer_role'] or 'supervisores@miempresa.com'})"],
+                horizontal=True
+            )
+            is_editor_mode = "Editor" in role_mode
+
+            st.divider()
+
+            st.markdown("#### Formulario de Entrada (Generado Dinámicamente)")
+            
+            if len(current_sub["fields"]) == 0:
+                st.caption("Esta subetapa no tiene campos configurados.")
+            else:
+                with st.form("runtime_dynamic_form"):
+                    form_inputs = {}
+                    for field in current_sub["fields"]:
+                        f_key = f"input_{field['name']}"
+                        prev_val = exec_state["form_data"].get(field["name"], None)
+
+                        if field["type"] == "string":
+                            fmt = field.get("format", "none")
+                            ph = field.get("placeholder") or ""
+                            help_msg = None
+                            if fmt == "rut":
+                                ph = ph or "_ _ _ _ _ _ _ _ - _"
+                                help_msg = "Formato esperado: 17837734-5. Si ingresas 178377345 se formateará automáticamente con guión."
+                            elif fmt == "phone":
+                                ph = ph or "+56 9 _ _ _ _  _ _ _ _"
+                                help_msg = "Formato telefónico: +56 9 XXXX XXXX"
+                            elif fmt == "email":
+                                ph = ph or "usuario@dominio.com"
+                            elif fmt == "custom":
+                                ph = ph or "_ _ _ _ _ _ _ _ - _"
+                                help_msg = f"Máscara / Patrón: {field.get('mask_pattern', '')}"
+
+                            form_inputs[field["name"]] = st.text_input(
+                                f"{field['title']} {'*' if field['required'] else ''}",
+                                value=prev_val or "",
+                                placeholder=ph,
+                                help=help_msg,
+                                disabled=not is_editor_mode
+                            )
+                        elif field["type"] == "number":
+                            form_inputs[field["name"]] = st.number_input(
+                                f"{field['title']} {'*' if field['required'] else ''}",
+                                value=float(prev_val or 0),
+                                disabled=not is_editor_mode
+                            )
+                        elif field["type"] == "date":
+                            form_inputs[field["name"]] = str(st.date_input(
+                                f"{field['title']} {'*' if field['required'] else ''}",
+                                value=date.today(),
+                                disabled=not is_editor_mode
+                            ))
+                        elif field["type"] == "boolean":
+                            form_inputs[field["name"]] = st.checkbox(
+                                f"{field['title']} {'*' if field['required'] else ''}",
+                                value=bool(prev_val or False),
+                                disabled=not is_editor_mode
+                            )
+                        elif field["type"] == "file":
+                            form_inputs[field["name"]] = "archivo_cargado.pdf"
+                            st.file_uploader(f"Subir {field['title']}", disabled=not is_editor_mode)
+
+                    if current_sub.get("service_key"):
+                        st.info(f"**Microservicio Conectado:** `{current_sub['service_key']}` (Se ejecutará automáticamente al guardar)")
+
+                    if is_editor_mode:
+                        submit_data = st.form_submit_button("Guardar y Enviar a Revisión", type="primary")
+                        if submit_data:
+                            validation_errors = []
+                            for field in current_sub["fields"]:
+                                fname = field["name"]
+                                val = form_inputs.get(fname, "")
+                                if field["type"] == "string" and isinstance(val, str) and val.strip():
+                                    fmt = field.get("format", "none")
+                                    if fmt == "rut":
+                                        formatted_rut = format_chilean_rut(val)
+                                        form_inputs[fname] = formatted_rut
+                                        is_valid, msg = validate_chilean_rut(formatted_rut)
+                                        if not is_valid and field.get("required"):
+                                            validation_errors.append(f"RUT '{formatted_rut}' para '{field['title']}': {msg}")
+                                    elif fmt == "phone":
+                                        form_inputs[fname] = format_phone_number(val)
+
+                            if validation_errors:
+                                for err in validation_errors:
+                                    st.warning(f"Nota: {err}")
+
+                            exec_state["form_data"].update(form_inputs)
+                            exec_state["status"] = "IN_REVIEW"
+                            exec_state["audit_logs"].append({
+                                "timestamp": datetime.now().strftime("%H:%M:%S"),
+                                "action": "SUBMITTED_FOR_REVIEW",
+                                "user": current_sub["editor_role"] or "editor@miempresa.com",
+                                "notes": f"Datos ingresados: {json.dumps(form_inputs, ensure_ascii=False)}"
+                            })
+                            st.success("Formulario enviado con éxito. Estado actualizado a: EN REVISIÓN.")
+                            st.rerun()
+
+            # Panel de Decisión del Revisor
+            if not is_editor_mode:
+                st.markdown("---")
+                st.markdown("#### Panel de Decisión del Revisor")
+                rev_notes = st.text_area("Observaciones / Comentarios del Revisor:", placeholder="Ingrese notas de revisión...")
+                
+                col_ap, col_rej = st.columns(2)
+                with col_ap:
+                    if st.button("Aprobar y Avanzar a Siguiente Subetapa", type="primary"):
+                        exec_state["status"] = "APPROVED"
+                        exec_state["audit_logs"].append({
+                            "timestamp": datetime.now().strftime("%H:%M:%S"),
+                            "action": "APPROVED_BY_REVIEWER",
+                            "user": current_sub["reviewer_role"] or "revisor@miempresa.com",
+                            "notes": rev_notes or "Aprobado sin comentarios."
+                        })
+
+                        current_flat_idx = 0
+                        for i, item in enumerate(all_substages):
+                            if item["stage_idx"] == exec_state["current_stage_idx"] and item["sub_idx"] == exec_state["current_substage_idx"]:
+                                current_flat_idx = i
+                                break
+                        
+                        if current_flat_idx + 1 < len(all_substages):
+                            next_item = all_substages[current_flat_idx + 1]
+                            exec_state["current_stage_idx"] = next_item["stage_idx"]
+                            exec_state["current_substage_idx"] = next_item["sub_idx"]
+                            exec_state["status"] = "IN_PROGRESS"
+                            st.success(f"Subetapa aprobada. Avanzando a: {next_item['substage']['title']}.")
+                        else:
+                            exec_state["status"] = "COMPLETED"
+                            st.success("Workflow completado con éxito.")
+                        st.rerun()
+
+                with col_rej:
+                    if st.button("Rechazar y Devolver al Editor", type="secondary"):
+                        exec_state["status"] = "REJECTED"
+                        exec_state["audit_logs"].append({
+                            "timestamp": datetime.now().strftime("%H:%M:%S"),
+                            "action": "REJECTED_BY_REVIEWER",
+                            "user": current_sub["reviewer_role"] or "revisor@miempresa.com",
+                            "notes": rev_notes or "Rechazado para corrección."
+                        })
+                        st.error("Subetapa rechazada. Devuelta al rol Editor para corrección.")
+                        st.rerun()
+
+            # Historial Inmutable de Auditoría
+            st.markdown("---")
+            st.markdown("#### Trazabilidad y Auditoría (Historial Inmutable)")
+            if len(exec_state["audit_logs"]) == 0:
+                st.caption("No hay eventos registrados aún en esta ejecución.")
+            else:
+                for log in reversed(exec_state["audit_logs"]):
+                    st.markdown(f"- **`{log['timestamp']}`** | `{log['action']}` por **{log['user']}** → *{log['notes']}*")
+
+# ==============================================================================
 
 # ==============================================================================
 # VISTA: PORTAL DEL CLIENTE (FRONT-END SENCILLO)
