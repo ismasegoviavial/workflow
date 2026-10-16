@@ -16,7 +16,6 @@ import {
   useReactFlow
 } from '@xyflow/react';
 
-import { Header } from './components/Header';
 import { PipelineToolbar } from './components/PipelineToolbar';
 import { PaletteSidebar, PaletteItem } from './components/PaletteSidebar';
 import { DataFusionNode } from './components/DataFusionNode';
@@ -28,22 +27,22 @@ const nodeTypes = {
   dataFusion: DataFusionNode,
 };
 
-// Initial default pipeline matching Cloud Data Fusion Studio screenshot
+// Default pipeline stages
 const INITIAL_NODES: Node[] = [
   {
     id: 'node-source-1',
     type: 'dataFusion',
     position: { x: 120, y: 180 },
     data: {
-      label: 'Portal Ingesta',
-      stageKey: 'portal_ingesta',
+      label: 'Ingreso de Solicitud',
+      stageKey: 'ingreso_solicitud',
       nodeType: 'source',
       serviceKey: 'SRV_PORTAL_INGEST',
       substages: [
         {
           id: 'sub-1',
           substage_key: 'form_inicial',
-          title: 'Formulario Inicial Cliente',
+          title: 'Formulario Inicial del Cliente',
           is_initial: true,
           service_id: 'SRV_PORTAL_INGEST',
           service_name: 'Formulario Web',
@@ -65,7 +64,7 @@ const INITIAL_NODES: Node[] = [
     type: 'dataFusion',
     position: { x: 420, y: 200 },
     data: {
-      label: 'Wrangler / Admisión',
+      label: 'Admisión y Validación',
       stageKey: 'admision_validaciones',
       nodeType: 'transform',
       serviceKey: 'SRV_RUT_VALIDATOR',
@@ -73,7 +72,7 @@ const INITIAL_NODES: Node[] = [
         {
           id: 'sub-2a',
           substage_key: 'val_rut',
-          title: 'Validación de RUT y Firma',
+          title: 'Validación de RUT y Antecedentes',
           is_initial: false,
           service_id: 'SRV_RUT_VALIDATOR',
           service_name: 'Validador RUT',
@@ -108,19 +107,19 @@ const INITIAL_NODES: Node[] = [
     type: 'dataFusion',
     position: { x: 740, y: 220 },
     data: {
-      label: 'BigQuery / Almacenamiento',
-      stageKey: 'almacenamiento_final',
+      label: 'Notificación y Registro',
+      stageKey: 'notificacion_registro',
       nodeType: 'sink',
-      serviceKey: 'SRV_BIGQUERY_SINK',
-      badgeCount: 4,
+      serviceKey: 'SRV_EMAIL_SENDER',
+      badgeCount: 2,
       substages: [
         {
           id: 'sub-3',
-          substage_key: 'persistencia_bq',
-          title: 'Carga a BigQuery y Notificación',
+          substage_key: 'persistencia_notif',
+          title: 'Envío de Email y Guardado Final',
           is_initial: false,
-          service_id: 'SRV_BIGQUERY_SINK',
-          service_name: 'BigQuery Sink',
+          service_id: 'SRV_EMAIL_SENDER',
+          service_name: 'Notificador Email',
           editor_workspace_group: 'ADMIN',
           reviewer_workspace_group: 'ADMIN',
           fields: [],
@@ -205,7 +204,7 @@ function StudioContent() {
         }
       };
       setEdges((eds) => addEdge(newEdge, eds));
-      showToast('Conector S-Curve enlazado exitosamente');
+      showToast('Etapa conectada exitosamente');
     },
     [setEdges]
   );
@@ -358,12 +357,12 @@ function StudioContent() {
       edges: edges.map(e => ({ id: e.id, source: e.source, target: e.target, sourceHandle: e.sourceHandle, targetHandle: e.targetHandle }))
     };
     localStorage.setItem('workflow_pipeline_studio', JSON.stringify(configPayload));
-    showToast('✓ Pipeline guardado correctamente');
+    showToast('✓ Flujo guardado correctamente');
   };
 
   const handleDeploy = () => {
     handleSave();
-    showToast('🚀 Pipeline desplegado y sincronizado con el Workflow Engine');
+    showToast('🚀 Flujo publicado exitosamente');
   };
 
   const handleExport = () => {
@@ -386,10 +385,7 @@ function StudioContent() {
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#f8f9fa]">
-      {/* 1. Google Cloud Data Fusion Studio Top Header */}
-      <Header />
-
-      {/* 2. Pipeline Action Bar & Subheader */}
+      {/* 1. Single Clean Process Toolbar */}
       <PipelineToolbar
         pipelineName={pipelineName}
         pipelineDescription={pipelineDescription}
@@ -398,10 +394,8 @@ function StudioContent() {
         onSave={handleSave}
         onDeploy={handleDeploy}
         onExport={handleExport}
-        onPreview={() => showToast('Modo de previsualización activo')}
-        onConfigure={() => {
-          if (nodes.length > 0) handleOpenConfig(nodes[0].id);
-        }}
+        onQuickAdd={handleQuickAdd}
+        onAutoLayout={handleAutoLayout}
       />
 
       {/* 3. Main Workspace: Left Palette + Studio Canvas */}
@@ -455,10 +449,8 @@ function StudioContent() {
             )}
           </ReactFlow>
 
-          {/* Floating Controls matching Cloud Data Fusion Studio (Right-hand toolbar + Green FAB) */}
+          {/* Floating Controls */}
           <FloatingControls
-            onQuickAdd={handleQuickAdd}
-            onAutoLayout={handleAutoLayout}
             showMinimap={showMinimap}
             onToggleMinimap={() => setShowMinimap(!showMinimap)}
           />

@@ -119,11 +119,11 @@ export const DataFusionNode: React.FC<NodeProps> = memo(({ id, data, selected })
         </div>
       </div>
 
-      {/* Bottom Ports for Wrangler / Transform: Alert & Error */}
+      {/* Bottom Ports: Alerta & Error */}
       {!isSource && !isSink && (
         <div className="px-3 pb-2 pt-0 flex items-center justify-between text-[8px] font-semibold text-gray-400 border-t border-gray-100/80">
           <div className="relative flex items-center space-x-1">
-            <span>Alert</span>
+            <span>Alerta</span>
             <Handle
               type="source"
               position={Position.Bottom}

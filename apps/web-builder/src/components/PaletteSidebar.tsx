@@ -38,37 +38,36 @@ export interface PaletteItem {
 }
 
 const PALETTE_DATA: Record<string, PaletteItem[]> = {
-  'Source': [
-    { id: 'src_portal', name: 'Portal Cliente', category: 'Source', nodeType: 'source', serviceKey: 'SRV_PORTAL_INGEST', description: 'Formulario web de cliente', iconName: 'Globe' },
-    { id: 'src_file', name: 'Carga Archivo', category: 'Source', nodeType: 'source', serviceKey: 'SRV_FILE_UPLOAD', description: 'Ingesta de documentos PDF/Excel', iconName: 'FileText' },
-    { id: 'src_api', name: 'API REST Ingest', category: 'Source', nodeType: 'source', serviceKey: 'SRV_API_TRIGGER', description: 'Disparador vía webhook o REST', iconName: 'Zap' },
-    { id: 'src_db', name: 'Database Source', category: 'Source', nodeType: 'source', serviceKey: 'SRV_DB_READ', description: 'Extracción desde SQL Server / Postgres', iconName: 'Database' },
-    { id: 'src_gcs', name: 'GCS File', category: 'Source', nodeType: 'source', serviceKey: 'SRV_GCS_INGEST', description: 'Google Cloud Storage Ingestion', iconName: 'Cloud' }
+  'Orígenes y Entradas': [
+    { id: 'src_portal', name: 'Formulario Cliente', category: 'Orígenes y Entradas', nodeType: 'source', serviceKey: 'SRV_PORTAL_INGEST', description: 'Formulario web de autoatención para el cliente', iconName: 'Globe' },
+    { id: 'src_file', name: 'Carga de Documentos', category: 'Orígenes y Entradas', nodeType: 'source', serviceKey: 'SRV_FILE_UPLOAD', description: 'Recepción de PDFs, comprobantes o liquidaciones', iconName: 'FileText' },
+    { id: 'src_api', name: 'Disparador API REST', category: 'Orígenes y Entradas', nodeType: 'source', serviceKey: 'SRV_API_TRIGGER', description: 'Recepción automática vía webhook o integración', iconName: 'Zap' },
+    { id: 'src_db', name: 'Extracción SQL / DB', category: 'Orígenes y Entradas', nodeType: 'source', serviceKey: 'SRV_DB_READ', description: 'Extracción desde base de datos transaccional', iconName: 'Database' },
+    { id: 'src_gcs', name: 'Archivos Cloud Storage', category: 'Orígenes y Entradas', nodeType: 'source', serviceKey: 'SRV_GCS_INGEST', description: 'Ingesta de archivos desde Google Cloud Storage', iconName: 'Cloud' }
   ],
-  'Transform': [
-    { id: 'tr_wrangler', name: 'Wrangler', category: 'Transform', nodeType: 'transform', serviceKey: 'SRV_WRANGLER', description: 'Transformación interactiva de datos', iconName: 'Wand2' },
-    { id: 'tr_rut', name: 'Validador RUT', category: 'Transform', nodeType: 'transform', serviceKey: 'SRV_RUT_VALIDATOR', description: 'Validación de dígito verificador y formato chileno', iconName: 'ShieldCheck' },
-    { id: 'tr_date', name: 'Calculador Fechas', category: 'Transform', nodeType: 'transform', serviceKey: 'SRV_DATE_CALCULATOR', description: 'Cálculo de plazos, vencimientos y edades', iconName: 'Calculator' },
-    { id: 'tr_score', name: 'Evaluador Riesgo', category: 'Transform', nodeType: 'transform', serviceKey: 'SRV_RISK_SCORING', description: 'Evaluación y motor de reglas de score', iconName: 'Cpu' },
-    { id: 'tr_operator', name: 'Bandeja Operador', category: 'Transform', nodeType: 'transform', serviceKey: 'SRV_OPERATOR_REVIEW', description: 'Revisión y aprobación manual por analista', iconName: 'UserCheck' },
-    { id: 'tr_normalizer', name: 'Normalizador Domicilio', category: 'Transform', nodeType: 'transform', serviceKey: 'SRV_ADDRESS_NORM', description: 'Estandarización de direcciones y comunas', iconName: 'Server' }
+  'Microservicios y Validación': [
+    { id: 'tr_rut', name: 'Validador de RUT', category: 'Microservicios y Validación', nodeType: 'transform', serviceKey: 'SRV_RUT_VALIDATOR', description: 'Validación de dígito verificador y formato chileno', iconName: 'ShieldCheck' },
+    { id: 'tr_date', name: 'Calculador de Fechas', category: 'Microservicios y Validación', nodeType: 'transform', serviceKey: 'SRV_DATE_CALCULATOR', description: 'Cálculo de plazos, vencimientos y edades', iconName: 'Calculator' },
+    { id: 'tr_operator', name: 'Bandeja de Analista', category: 'Microservicios y Validación', nodeType: 'transform', serviceKey: 'SRV_OPERATOR_REVIEW', description: 'Revisión y visto bueno manual por un operador', iconName: 'UserCheck' },
+    { id: 'tr_normalizer', name: 'Normalizador Domicilio', category: 'Microservicios y Validación', nodeType: 'transform', serviceKey: 'SRV_ADDRESS_NORM', description: 'Estandarización de direcciones y comunas', iconName: 'Server' },
+    { id: 'tr_wrangler', name: 'Transformador de Datos', category: 'Microservicios y Validación', nodeType: 'transform', serviceKey: 'SRV_TRANSFORMER', description: 'Limpieza y mapeo estructural de campos', iconName: 'Wand2' }
   ],
-  'Analytics': [
-    { id: 'an_credit', name: 'Credit Scoring ML', category: 'Analytics', nodeType: 'transform', serviceKey: 'SRV_ML_CREDIT', description: 'Inferencia de modelo predictivo', iconName: 'Cpu' },
-    { id: 'an_rules', name: 'Reglas de Negocio', category: 'Analytics', nodeType: 'transform', serviceKey: 'SRV_BUSINESS_RULES', description: 'Motor declarativo de políticas', iconName: 'Layers' }
+  'Motores de Decisión y Reglas': [
+    { id: 'an_credit', name: 'Motor Scoring de Riesgo', category: 'Motores de Decisión y Reglas', nodeType: 'transform', serviceKey: 'SRV_RISK_SCORING', description: 'Evaluación y scoring crediticio automatizado', iconName: 'Cpu' },
+    { id: 'an_rules', name: 'Motor de Políticas', category: 'Motores de Decisión y Reglas', nodeType: 'transform', serviceKey: 'SRV_BUSINESS_RULES', description: 'Evaluación declarativa de reglas comerciales', iconName: 'Layers' }
   ],
-  'Sink': [
-    { id: 'sn_bq', name: 'BigQuery', category: 'Sink', nodeType: 'sink', serviceKey: 'SRV_BIGQUERY_SINK', description: 'Almacenamiento analítico en BigQuery', iconName: 'Database' },
-    { id: 'sn_email', name: 'Notificador Email', category: 'Sink', nodeType: 'sink', serviceKey: 'SRV_EMAIL_SENDER', description: 'Envío automático de notificaciones por correo', iconName: 'Mail' },
-    { id: 'sn_sms', name: 'Notificador SMS', category: 'Sink', nodeType: 'sink', serviceKey: 'SRV_SMS_SENDER', description: 'Envío de alertas SMS / WhatsApp', iconName: 'Smartphone' },
-    { id: 'sn_db', name: 'Database Sink', category: 'Sink', nodeType: 'sink', serviceKey: 'SRV_DB_WRITE', description: 'Persistencia en Base de Datos transaccional', iconName: 'Server' }
+  'Destinos y Notificaciones': [
+    { id: 'sn_db', name: 'Guardar en Base de Datos', category: 'Destinos y Notificaciones', nodeType: 'sink', serviceKey: 'SRV_DB_WRITE', description: 'Persistencia en Base de Datos transaccional', iconName: 'Server' },
+    { id: 'sn_email', name: 'Notificación por Email', category: 'Destinos y Notificaciones', nodeType: 'sink', serviceKey: 'SRV_EMAIL_SENDER', description: 'Envío de confirmación o resoluciones por correo', iconName: 'Mail' },
+    { id: 'sn_sms', name: 'Notificación SMS/WhatsApp', category: 'Destinos y Notificaciones', nodeType: 'sink', serviceKey: 'SRV_SMS_SENDER', description: 'Envío de alertas móviles automáticas', iconName: 'Smartphone' },
+    { id: 'sn_bq', name: 'Almacén Analítico BigQuery', category: 'Destinos y Notificaciones', nodeType: 'sink', serviceKey: 'SRV_BIGQUERY_SINK', description: 'Persistencia para reportería y analítica gerencial', iconName: 'Database' }
   ],
-  'Conditions and Actions': [
-    { id: 'cd_branch', name: 'Bifurcación Condicional', category: 'Conditions and Actions', nodeType: 'condition', serviceKey: 'SRV_BRANCH', description: 'División según regla Si/No', iconName: 'Split' },
-    { id: 'cd_parallel', name: 'Bloque Paralelo', category: 'Conditions and Actions', nodeType: 'condition', serviceKey: 'SRV_PARALLEL', description: 'Ejecución simultánea de tareas', iconName: 'GitFork' }
+  'Compuertas y Control de Flujo': [
+    { id: 'cd_branch', name: 'Bifurcación (Si / No)', category: 'Compuertas y Control de Flujo', nodeType: 'condition', serviceKey: 'SRV_BRANCH', description: 'División del flujo según condición de negocio', iconName: 'Split' },
+    { id: 'cd_parallel', name: 'Ejecución en Paralelo', category: 'Compuertas y Control de Flujo', nodeType: 'condition', serviceKey: 'SRV_PARALLEL', description: 'Ejecución simultánea de tareas independientes', iconName: 'GitFork' }
   ],
-  'Error Handlers and Alerts': [
-    { id: 'err_alert', name: 'Alerta de Error', category: 'Error Handlers and Alerts', nodeType: 'sink', serviceKey: 'SRV_ERROR_HANDLER', description: 'Despacho de alerta por fallo', iconName: 'AlertTriangle' }
+  'Excepciones y Alertas': [
+    { id: 'err_alert', name: 'Gestor de Alerta / Error', category: 'Excepciones y Alertas', nodeType: 'sink', serviceKey: 'SRV_ERROR_HANDLER', description: 'Notificación inmediata ante fallas o inconsistencias', iconName: 'AlertTriangle' }
   ]
 };
 
@@ -110,12 +109,12 @@ export const PaletteSidebar: React.FC<PaletteSidebarProps> = ({
   const [filterText, setFilterText] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
-    'Source': true,
-    'Transform': true,
-    'Analytics': false,
-    'Sink': true,
-    'Conditions and Actions': false,
-    'Error Handlers and Alerts': false
+    'Orígenes y Entradas': true,
+    'Microservicios y Validación': true,
+    'Motores de Decisión y Reglas': false,
+    'Destinos y Notificaciones': true,
+    'Compuertas y Control de Flujo': false,
+    'Excepciones y Alertas': false
   });
 
   const toggleSection = (section: string) => {
@@ -133,7 +132,7 @@ export const PaletteSidebar: React.FC<PaletteSidebarProps> = ({
         <button 
           onClick={onToggleCollapse}
           className="p-1 hover:bg-gray-200 rounded text-gray-600 transition-colors"
-          title="Expandir paleta de microservicios"
+          title="Expandir catálogo de componentes"
         >
           <ChevronRight className="w-4 h-4" />
         </button>
@@ -151,7 +150,7 @@ export const PaletteSidebar: React.FC<PaletteSidebarProps> = ({
             type="text"
             value={filterText}
             onChange={(e) => setFilterText(e.target.value)}
-            placeholder="Filter"
+            placeholder="Buscar microservicios y bloques..."
             className="w-full pl-8 pr-2 py-1 text-xs bg-[#f1f3f4] hover:bg-[#e8eaed] focus:bg-white border border-transparent focus:border-blue-500 rounded text-gray-800 placeholder-gray-500 outline-none transition-all"
           />
         </div>
@@ -175,7 +174,7 @@ export const PaletteSidebar: React.FC<PaletteSidebarProps> = ({
           <button 
             onClick={onToggleCollapse}
             className="p-1 hover:bg-gray-100 rounded text-gray-500"
-            title="Contraer paleta"
+            title="Contraer panel"
           >
             <ChevronLeft className="w-3.5 h-3.5" />
           </button>

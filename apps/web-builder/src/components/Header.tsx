@@ -1,5 +1,5 @@
 import React from 'react';
-import { Menu, Share2, HelpCircle } from 'lucide-react';
+import { Menu, Share2, HelpCircle, Layers } from 'lucide-react';
 
 interface HeaderProps {
   onBackToApp?: () => void;
@@ -17,15 +17,15 @@ export const Header: React.FC<HeaderProps> = ({ onBackToApp }) => {
           <Menu className="w-5 h-5" />
         </button>
         
-        {/* Google Cloud Data Fusion Studio Brand */}
+        {/* Brand */}
         <div className="flex items-center space-x-2">
           <div className="w-6 h-6 rounded bg-white/20 flex items-center justify-center font-bold text-xs tracking-wider text-white">
-            CDF
+            <Layers className="w-4 h-4 text-white" />
           </div>
           <span className="font-medium text-base tracking-wide flex items-center space-x-1.5">
-            <span>Cloud Data Fusion</span>
+            <span>Workflow Engine</span>
             <span className="text-blue-200 font-light">|</span>
-            <span className="font-normal text-blue-100">Studio</span>
+            <span className="font-normal text-blue-100">Studio de Procesos</span>
           </span>
         </div>
       </div>
@@ -33,13 +33,13 @@ export const Header: React.FC<HeaderProps> = ({ onBackToApp }) => {
       {/* Right section: Links & Edition Badge */}
       <div className="flex items-center space-x-5 text-xs font-medium tracking-wider">
         <button className="text-blue-100 hover:text-white transition-colors uppercase">
-          DASHBOARD
+          PANEL DE CONTROL
         </button>
         <button className="text-blue-100 hover:text-white transition-colors uppercase">
-          HUB
+          CATÁLOGO
         </button>
         <button className="text-blue-100 hover:text-white transition-colors uppercase">
-          SYSTEM ADMIN
+          ADMINISTRACIÓN
         </button>
 
         <div className="h-4 w-px bg-blue-400/50" />
@@ -48,14 +48,14 @@ export const Header: React.FC<HeaderProps> = ({ onBackToApp }) => {
           <Share2 className="w-4 h-4" />
         </button>
 
-        <button className="p-1 text-blue-100 hover:text-white hover:bg-blue-700 rounded transition-colors" title="Ayuda">
+        <button className="p-1 text-blue-100 hover:text-white hover:bg-blue-700 rounded transition-colors" title="Ayuda y Documentación">
           <HelpCircle className="w-4 h-4" />
         </button>
 
         {/* Edition Badge */}
         <div className="bg-blue-800/80 border border-blue-400/40 text-blue-100 px-2.5 py-1 rounded text-[11px] font-semibold flex items-center space-x-1.5">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-          <span>Basic Edition</span>
+          <span>Edición Empresarial</span>
         </div>
       </div>
     </header>
