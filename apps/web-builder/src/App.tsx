@@ -267,6 +267,34 @@ function StudioContent() {
         stageKey: item.id.replace(/[^a-zA-Z0-9_]/g, '_'),
         nodeType: item.nodeType,
         serviceKey: item.serviceKey || 'SRV_GENERIC',
+        decisionConfig: item.nodeType === 'condition' ? {
+          engineType: 'rules',
+          rules: [
+            {
+              id: `r_${Date.now()}_1`,
+              variable: 'total_monto',
+              operator: '>',
+              value: '5000000',
+              branchLabel: 'Aprobación Especial',
+              branchKey: `branch_${Date.now()}_1`,
+              color: '#7e57c2'
+            },
+            {
+              id: `r_${Date.now()}_2`,
+              variable: 'score',
+              operator: '>=',
+              value: '700',
+              branchLabel: 'Paso Directo',
+              branchKey: `branch_${Date.now()}_2`,
+              color: '#1a73e8'
+            }
+          ],
+          defaultBranch: {
+            branchLabel: 'Ruta Estándar (Por Defecto)',
+            branchKey: `branch_default_${Date.now()}`,
+            color: '#34a853'
+          }
+        } : undefined,
         substages: [
           {
             id: `sub_${Date.now()}`,

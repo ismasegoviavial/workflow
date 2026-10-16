@@ -14,12 +14,15 @@ import {
   Mail,
   Zap,
   Cpu,
-  UserCheck
+  UserCheck,
+  Split,
+  GitFork
 } from 'lucide-react';
 import { FusionNodeData } from '../types';
 
 const getNodeIcon = (serviceKey?: string, nodeType?: string) => {
   const iconClass = "w-4 h-4";
+  if (nodeType === 'condition') return <Split className={iconClass} />;
   if (!serviceKey) {
     if (nodeType === 'source') return <Globe className={iconClass} />;
     if (nodeType === 'sink') return <Database className={iconClass} />;
@@ -28,13 +31,14 @@ const getNodeIcon = (serviceKey?: string, nodeType?: string) => {
 
   if (serviceKey.includes('RUT')) return <ShieldCheck className={iconClass} />;
   if (serviceKey.includes('DATE') || serviceKey.includes('CALCULATOR')) return <Calculator className={iconClass} />;
-  if (serviceKey.includes('WRANGLER')) return <Wand2 className={iconClass} />;
+  if (serviceKey.includes('WRANGLER') || serviceKey.includes('TRANSFORMER')) return <Wand2 className={iconClass} />;
   if (serviceKey.includes('PORTAL')) return <Globe className={iconClass} />;
   if (serviceKey.includes('FILE')) return <FileText className={iconClass} />;
   if (serviceKey.includes('EMAIL') || serviceKey.includes('SMS')) return <Mail className={iconClass} />;
   if (serviceKey.includes('BIGQUERY') || serviceKey.includes('DB')) return <Database className={iconClass} />;
   if (serviceKey.includes('OPERATOR')) return <UserCheck className={iconClass} />;
   if (serviceKey.includes('RISK') || serviceKey.includes('ML')) return <Cpu className={iconClass} />;
+  if (serviceKey.includes('BRANCH') || serviceKey.includes('PARALLEL')) return <Split className={iconClass} />;
   return <Zap className={iconClass} />;
 };
 
@@ -44,10 +48,11 @@ export const DataFusionNode: React.FC<NodeProps> = memo(({ id, data, selected })
   const isSink = nodeData.nodeType === 'sink';
   const isCondition = nodeData.nodeType === 'condition';
 
-  // Colors matching Google Cloud Data Fusion Studio
+  // Semantic styles
   // Source: Green border (#34a853)
   // Transform: Blue border (#1a73e8)
   // Sink: Purple background/border (#7e57c2)
+  // Condition: Amber border (#f59e0b)
   let borderClasses = "border-2 border-[#1a73e8] bg-white text-gray-800";
   let titleColor = "text-[#1a73e8]";
   let iconBg = "bg-blue-50 text-blue-600 border border-blue-200";
@@ -67,10 +72,12 @@ export const DataFusionNode: React.FC<NodeProps> = memo(({ id, data, selected })
   }
 
   const substagesCount = nodeData.substages ? nodeData.substages.length : 0;
+  const decisionRules = nodeData.decisionConfig?.rules || [];
+  const defaultBranch = nodeData.decisionConfig?.defaultBranch;
 
   return (
     <div 
-      className={`relative min-w-[200px] max-w-[240px] rounded-sm shadow-md transition-all select-none ${borderClasses} ${
+      className={`relative min-w-[210px] max-w-[260px] rounded-md shadow-md transition-all select-none ${borderClasses} ${
         selected ? 'ring-2 ring-blue-400 ring-offset-2 shadow-xl scale-[1.02]' : 'hover:shadow-lg'
       }`}
       onDoubleClick={() => nodeData.onConfigure && nodeData.onConfigure(id)}
@@ -85,7 +92,7 @@ export const DataFusionNode: React.FC<NodeProps> = memo(({ id, data, selected })
         />
       )}
 
-      {/* Badge Count (top right, like the yellow '4' in Data Fusion BigQuery) */}
+      {/* Badge Count */}
       {nodeData.badgeCount !== undefined && nodeData.badgeCount > 0 && (
         <div className="absolute -top-2 -right-2 bg-amber-400 text-amber-950 font-bold text-[10px] w-5 h-5 rounded flex items-center justify-center shadow">
           {nodeData.badgeCount}
@@ -105,22 +112,84 @@ export const DataFusionNode: React.FC<NodeProps> = memo(({ id, data, selected })
             {nodeData.label}
           </div>
           <div className={`text-[10px] leading-tight truncate mt-0.5 ${isSink ? 'text-purple-100' : 'text-gray-500'}`}>
-            {nodeData.serviceKey || '4.1.5'}
+            {isCondition 
+              ? `${decisionRules.length + 1} Rutas de Salida` 
+              : (nodeData.serviceKey || 'Procesamiento')}
           </div>
 
-          {/* Subetapas pill */}
+          {/* Subetapas / Rutas badge */}
           <div className="mt-1.5 flex items-center space-x-1">
-            <span className={`text-[9px] px-1.5 py-0.2 rounded font-medium ${
-              isSink ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600'
+            <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${
+              isSink 
+                ? 'bg-white/20 text-white' 
+                : isCondition 
+                  ? 'bg-amber-100 text-amber-800' 
+                  : 'bg-gray-100 text-gray-600'
             }`}>
-              {substagesCount === 1 ? '1 Subetapa' : `${substagesCount} Subetapas`}
+              {isCondition 
+                ? 'Motor de Decisión' 
+                : substagesCount === 1 ? '1 Subetapa' : `${substagesCount} Subetapas`}
             </span>
           </div>
         </div>
       </div>
 
-      {/* Bottom Ports: Alerta & Error */}
-      {!isSource && !isSink && (
+      {/* Decision Engine Branch Outlets (Multiple Named Output Ports) */}
+      {isCondition && nodeData.decisionConfig ? (
+        <div className="border-t border-amber-200/80 bg-amber-50/60 py-1.5 px-2.5 space-y-1.5">
+          {decisionRules.map((rule, idx) => (
+            <div key={rule.id || idx} className="relative flex items-center justify-between text-[10px] font-semibold text-gray-700 py-0.5">
+              <span className="truncate pr-4 flex items-center space-x-1">
+                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: rule.color || '#ea8600' }} />
+                <span>{rule.branchLabel || `Ruta ${idx + 1}`}</span>
+              </span>
+              <Handle
+                type="source"
+                position={Position.Right}
+                id={rule.branchKey || `branch_${idx}`}
+                style={{
+                  top: `${46 + idx * 26}px`,
+                  backgroundColor: rule.color || '#ea8600'
+                }}
+                className="!w-3.5 !h-3.5 !border-2 !border-white hover:scale-125 !-right-2 transition-transform shadow-xs"
+                title={`Rama: ${rule.branchLabel} (SI ${rule.variable} ${rule.operator} ${rule.value})`}
+              />
+            </div>
+          ))}
+
+          {/* Default fallback branch (Else) */}
+          <div className="relative flex items-center justify-between text-[10px] font-semibold text-gray-600 py-0.5 border-t border-amber-200/60 pt-1">
+            <span className="truncate pr-4 flex items-center space-x-1">
+              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: defaultBranch?.color || '#5f6368' }} />
+              <span>{defaultBranch?.branchLabel || 'Por Defecto (Else)'}</span>
+            </span>
+            <Handle
+              type="source"
+              position={Position.Right}
+              id={defaultBranch?.branchKey || 'branch_default'}
+              style={{
+                top: `${46 + decisionRules.length * 26}px`,
+                backgroundColor: defaultBranch?.color || '#5f6368'
+              }}
+              className="!w-3.5 !h-3.5 !border-2 !border-white hover:scale-125 !-right-2 transition-transform shadow-xs"
+              title={`Rama por Defecto: ${defaultBranch?.branchLabel || 'Else'}`}
+            />
+          </div>
+        </div>
+      ) : (
+        /* Regular single output port */
+        !isSink && (
+          <Handle
+            type="source"
+            position={Position.Right}
+            id="out"
+            className="!w-3 !h-3 !bg-[#5f6368] !border-2 !border-white hover:!bg-blue-600 !-right-2 transition-transform"
+          />
+        )
+      )}
+
+      {/* Bottom Ports for Transform: Alerta & Error */}
+      {!isSource && !isSink && !isCondition && (
         <div className="px-3 pb-2 pt-0 flex items-center justify-between text-[8px] font-semibold text-gray-400 border-t border-gray-100/80">
           <div className="relative flex items-center space-x-1">
             <span>Alerta</span>
@@ -152,20 +221,10 @@ export const DataFusionNode: React.FC<NodeProps> = memo(({ id, data, selected })
         className={`absolute bottom-1.5 right-1.5 p-1 rounded transition-colors ${
           isSink ? 'hover:bg-white/20 text-white' : 'hover:bg-gray-200 text-gray-500'
         }`}
-        title="Configurar Subetapas y Parámetros"
+        title="Configurar Parámetros y Reglas"
       >
         <Menu className="w-3.5 h-3.5" />
       </button>
-
-      {/* Output Handle (Right Port) - All except Sink */}
-      {!isSink && (
-        <Handle
-          type="source"
-          position={Position.Right}
-          id="out"
-          className="!w-3 !h-3 !bg-[#5f6368] !border-2 !border-white hover:!bg-blue-600 !-right-2 transition-transform"
-        />
-      )}
     </div>
   );
 });

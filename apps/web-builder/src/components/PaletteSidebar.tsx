@@ -53,6 +53,7 @@ const PALETTE_DATA: Record<string, PaletteItem[]> = {
     { id: 'tr_wrangler', name: 'Transformador de Datos', category: 'Microservicios y Validación', nodeType: 'transform', serviceKey: 'SRV_TRANSFORMER', description: 'Limpieza y mapeo estructural de campos', iconName: 'Wand2' }
   ],
   'Motores de Decisión y Reglas': [
+    { id: 'an_decision', name: 'Motor de Decisión (Reglas)', category: 'Motores de Decisión y Reglas', nodeType: 'condition', serviceKey: 'SRV_DECISION_ENGINE', description: 'Constructor de reglas condicionales agnósticas (SI / ENTONCES)', iconName: 'Split' },
     { id: 'an_credit', name: 'Motor Scoring de Riesgo', category: 'Motores de Decisión y Reglas', nodeType: 'transform', serviceKey: 'SRV_RISK_SCORING', description: 'Evaluación y scoring crediticio automatizado', iconName: 'Cpu' },
     { id: 'an_rules', name: 'Motor de Políticas', category: 'Motores de Decisión y Reglas', nodeType: 'transform', serviceKey: 'SRV_BUSINESS_RULES', description: 'Evaluación declarativa de reglas comerciales', iconName: 'Layers' }
   ],

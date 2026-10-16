@@ -56,6 +56,29 @@ export interface ExecutionState {
 
 export type FusionNodeType = 'source' | 'transform' | 'sink' | 'condition';
 
+export type RuleOperator = '>' | '<' | '>=' | '<=' | '==' | '!=' | 'contains' | 'is_true' | 'is_false';
+
+export interface DecisionRule {
+  id: string;
+  variable: string;
+  operator: RuleOperator;
+  value: string;
+  branchLabel: string;
+  branchKey: string;
+  color?: string;
+}
+
+export interface DecisionEngineConfig {
+  engineType: 'rules' | 'service';
+  serviceKey?: string;
+  rules: DecisionRule[];
+  defaultBranch: {
+    branchLabel: string;
+    branchKey: string;
+    color?: string;
+  };
+}
+
 export interface FusionNodeData {
   label: string;
   stageKey: string;
@@ -64,6 +87,7 @@ export interface FusionNodeData {
   serviceKey?: string;
   serviceName?: string;
   substages: Substage[];
+  decisionConfig?: DecisionEngineConfig;
   badgeCount?: number;
   isInitial?: boolean;
   isFinal?: boolean;
